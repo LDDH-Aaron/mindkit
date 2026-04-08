@@ -1,21 +1,22 @@
 FROM node:22-slim AS base
+RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
 RUN corepack enable pnpm
 
 WORKDIR /app
 
-# 复制依赖定义
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+# 克隆 stello SDK（公开仓库）
+ARG STELLO_REF=main
+RUN git clone --depth 1 --branch ${STELLO_REF} https://github.com/stello-agent/stello.git stello
+
+# 复制依赖定义 + 根 tsconfig
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json ./
 COPY packages/server/package.json packages/server/
 COPY packages/web/package.json packages/web/
-COPY stello/packages/core/package.json stello/packages/core/
-COPY stello/packages/session/package.json stello/packages/session/
-COPY stello/packages/devtools/web/package.json stello/packages/devtools/web/
 
 # 安装依赖
 RUN pnpm install --frozen-lockfile
 
 # 复制源码
-COPY stello/ stello/
 COPY packages/ packages/
 COPY market/ market/
 
