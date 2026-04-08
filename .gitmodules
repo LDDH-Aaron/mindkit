@@ -1,0 +1,3 @@
+[submodule "stello"]
+	path = stello
+	url = git@github.com:stello-agent/stello.git
