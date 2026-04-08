@@ -38,9 +38,15 @@ export function createSpace(body: {
   mode?: 'AUTO' | 'PRO'
   expectedArtifacts?: string
   systemPrompt?: string
+  consolidatePrompt?: string
+  integratePrompt?: string
   presetSessions?: Array<{
     name: string; label: string
-    systemPrompt?: string; guidePrompt?: string
+    systemPrompt?: string
+    systemPromptMode?: 'preset' | 'prepend' | 'append'
+    context?: 'none' | 'inherit'
+    consolidatePrompt?: string
+    guidePrompt?: string
     activationHint?: string; skills?: string[]
   }>
   skills?: Array<{ name: string; description: string; content: string }>

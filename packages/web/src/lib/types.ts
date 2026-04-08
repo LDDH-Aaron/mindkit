@@ -10,6 +10,8 @@ export interface SpaceMeta {
   mode: 'AUTO' | 'PRO'
   expectedArtifacts?: string
   systemPrompt: string
+  consolidatePrompt?: string
+  integratePrompt?: string
   presetSessions?: PresetSession[]
   skills?: SpaceSkill[]
 }
@@ -19,6 +21,12 @@ export interface PresetSession {
   name: string
   label: string
   systemPrompt?: string
+  /** systemPrompt 合成策略 */
+  systemPromptMode?: 'preset' | 'prepend' | 'append'
+  /** 上下文继承策略 */
+  context?: 'none' | 'inherit'
+  /** 该节点专属的 L3→L2 consolidation 提示词 */
+  consolidatePrompt?: string
   guidePrompt?: string
   activationHint?: string
   skills?: string[]
@@ -37,6 +45,7 @@ export interface PresetForkProfile {
   systemPrompt?: string
   systemPromptMode?: 'preset' | 'prepend' | 'append'
   context?: 'none' | 'inherit'
+  consolidatePrompt?: string
   skills?: string[]
 }
 
@@ -50,6 +59,8 @@ export interface PresetConfig {
   mode: 'AUTO' | 'PRO'
   expectedArtifacts: string
   systemPrompt: string
+  consolidatePrompt?: string
+  integratePrompt?: string
   forkProfiles: PresetForkProfile[]
   skills: SpaceSkill[]
 }

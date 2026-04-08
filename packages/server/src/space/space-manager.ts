@@ -21,6 +21,10 @@ export interface SpaceMeta {
   expectedArtifacts?: string
   /** 领域特定系统提示词（不含框架级 tool 说明） */
   systemPrompt: string
+  /** 自定义 consolidation 提示词（null 使用默认） */
+  consolidatePrompt?: string
+  /** 自定义 integration 提示词（null 使用默认） */
+  integratePrompt?: string
   /** 预设节点（注册为 ForkProfile） */
   presetSessions?: PresetSession[]
   /** 技能列表 */
@@ -37,6 +41,8 @@ export interface SpaceCreateBody {
   mode?: 'AUTO' | 'PRO'
   expectedArtifacts?: string
   systemPrompt?: string
+  consolidatePrompt?: string
+  integratePrompt?: string
   presetSessions?: PresetSession[]
   skills?: SpaceSkill[]
 }
@@ -46,6 +52,12 @@ export interface PresetSession {
   name: string
   label: string
   systemPrompt?: string
+  /** systemPrompt 合成策略：preset/prepend/append，默认 prepend */
+  systemPromptMode?: 'preset' | 'prepend' | 'append'
+  /** 上下文继承策略：none/inherit，默认 inherit */
+  context?: 'none' | 'inherit'
+  /** 该节点专属的 L3→L2 consolidation 提示词（覆盖 space 级别） */
+  consolidatePrompt?: string
   guidePrompt?: string
   activationHint?: string
   skills?: string[]
@@ -61,7 +73,8 @@ export interface SpaceSkill {
 /** updateSpace 可修改的字段子集 */
 export type SpaceUpdatePatch = Partial<Pick<SpaceMeta,
   'name' | 'emoji' | 'color' | 'description' | 'mode' |
-  'expectedArtifacts' | 'systemPrompt' | 'presetSessions' | 'skills'
+  'expectedArtifacts' | 'systemPrompt' | 'consolidatePrompt' | 'integratePrompt' |
+  'presetSessions' | 'skills'
 >>
 
 /** SpaceManager 初始化配置 */
@@ -134,6 +147,12 @@ export class SpaceManager {
       color: body.color ?? preset.color,
       mode: body.mode ?? preset.mode,
       systemPrompt: body.systemPrompt ?? preset.systemPrompt,
+      ...(body.consolidatePrompt !== undefined
+        ? { consolidatePrompt: body.consolidatePrompt }
+        : preset.consolidatePrompt ? { consolidatePrompt: preset.consolidatePrompt } : {}),
+      ...(body.integratePrompt !== undefined
+        ? { integratePrompt: body.integratePrompt }
+        : preset.integratePrompt ? { integratePrompt: preset.integratePrompt } : {}),
       ...(body.description !== undefined
         ? { description: body.description }
         : preset.description ? { description: preset.description } : {}),
@@ -148,6 +167,9 @@ export class SpaceManager {
               name: fp.name,
               label: fp.name,
               systemPrompt: fp.systemPrompt,
+              systemPromptMode: fp.systemPromptMode,
+              context: fp.context,
+              consolidatePrompt: fp.consolidatePrompt,
               skills: fp.skills,
             })) }
           : {}),

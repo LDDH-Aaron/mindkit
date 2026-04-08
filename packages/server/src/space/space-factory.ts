@@ -136,7 +136,8 @@ export function createSpaceAgent(ctx: SpaceFactoryContext): StelloAgent {
     for (const fp of ctx.spaceMeta.presetSessions) {
       profiles.register(fp.name, {
         systemPrompt: fp.systemPrompt,
-        systemPromptMode: 'prepend',
+        systemPromptMode: fp.systemPromptMode ?? 'prepend',
+        context: fp.context,
         skills: fp.skills,
       })
     }
@@ -183,9 +184,11 @@ export function createSpaceAgent(ctx: SpaceFactoryContext): StelloAgent {
     dismissUpdate: async () => {},
   }
 
-  // ConsolidateFn / IntegrateFn
-  const consolidatePrompt = ctx.config.consolidatePrompt ?? DEFAULT_CONSOLIDATE_PROMPT
-  const integratePrompt = ctx.config.integratePrompt ?? DEFAULT_INTEGRATE_PROMPT
+  // ConsolidateFn / IntegrateFn：space 级覆盖 > preset 级 > SDK 默认
+  const consolidatePrompt =
+    ctx.spaceMeta?.consolidatePrompt ?? ctx.config.consolidatePrompt ?? DEFAULT_CONSOLIDATE_PROMPT
+  const integratePrompt =
+    ctx.spaceMeta?.integratePrompt ?? ctx.config.integratePrompt ?? DEFAULT_INTEGRATE_PROMPT
 
   const config: StelloAgentConfig = {
     sessions,
@@ -209,6 +212,21 @@ export function createSpaceAgent(ctx: SpaceFactoryContext): StelloAgent {
           tools: [...sessionTools],
         })
         if (!session) throw new Error(`Failed to load session: ${sessionId}`)
+
+        // 若该 session 对应的 PresetSession 有自定义 consolidatePrompt，覆盖 consolidate 方法
+        const matchedProfile = ctx.spaceMeta?.presetSessions?.find(
+          (p) => p.consolidatePrompt && (p.name === meta.label || p.label === meta.label),
+        )
+        if (matchedProfile?.consolidatePrompt) {
+          const customFn = createDefaultConsolidateFn(matchedProfile.consolidatePrompt, llmCallFn)
+          return {
+            ...session,
+            // 覆盖 consolidate：忽略全局 fn，使用节点专属提示词
+            consolidate: (_globalFn: Parameters<typeof session.consolidate>[0]) =>
+              session.consolidate(customFn),
+          }
+        }
+
         return session
       },
       /** 解析 Main Session，先恢复运行态再加载 */

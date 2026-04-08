@@ -28,6 +28,8 @@ export interface PresetConfig {
     systemPrompt?: string
     systemPromptMode?: 'preset' | 'prepend' | 'append'
     context?: 'none' | 'inherit'
+    /** 该 fork profile 专属的 L3→L2 consolidation 提示词 */
+    consolidatePrompt?: string
     skills?: string[]
   }>
   /** 技能列表 */

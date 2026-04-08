@@ -61,6 +61,9 @@ interface PresetSessionDraft {
   name: string
   label: string
   systemPrompt: string
+  systemPromptMode: 'preset' | 'prepend' | 'append'
+  context: 'inherit' | 'none'
+  consolidatePrompt: string
   guidePrompt: string
   activationHint: string
 }
@@ -73,7 +76,7 @@ function PresetSessionEditor({
   onChange: (s: PresetSessionDraft[]) => void
 }) {
   const addSession = () => {
-    onChange([...sessions, { name: '', label: '', systemPrompt: '', guidePrompt: '', activationHint: '' }])
+    onChange([...sessions, { name: '', label: '', systemPrompt: '', systemPromptMode: 'prepend', context: 'inherit', consolidatePrompt: '', guidePrompt: '', activationHint: '' }])
   }
   const removeSession = (i: number) => {
     onChange(sessions.filter((_, idx) => idx !== i))
@@ -111,6 +114,38 @@ function PresetSessionEditor({
             value={s.systemPrompt} onChange={(e) => updateSession(i, 'systemPrompt', e.target.value)}
             rows={2}
             className="w-full px-2 py-1.5 rounded border border-border bg-card text-xs placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-primary/30 resize-none"
+          />
+          {/* systemPromptMode + context */}
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-[10px] text-text-muted mb-1">提示词合成策略</label>
+              <select
+                value={s.systemPromptMode}
+                onChange={(e) => updateSession(i, 'systemPromptMode', e.target.value)}
+                className="w-full px-2 py-1.5 rounded border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary/30"
+              >
+                <option value="prepend">prepend — 加在空间提示词前</option>
+                <option value="append">append — 加在空间提示词后</option>
+                <option value="preset">preset — 完全替换</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] text-text-muted mb-1">上下文继承</label>
+              <select
+                value={s.context}
+                onChange={(e) => updateSession(i, 'context', e.target.value)}
+                className="w-full px-2 py-1.5 rounded border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary/30"
+              >
+                <option value="inherit">inherit — 继承父对话上下文</option>
+                <option value="none">none — 空白上下文启动</option>
+              </select>
+            </div>
+          </div>
+          <textarea
+            placeholder="节点专属 Consolidate Prompt（留空使用 space 级别）"
+            value={s.consolidatePrompt} onChange={(e) => updateSession(i, 'consolidatePrompt', e.target.value)}
+            rows={2}
+            className="w-full px-2 py-1.5 rounded border border-border bg-card text-xs font-mono placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-primary/30 resize-none"
           />
           <input
             placeholder="引导语 (guidePrompt) — 进入节点时的开场问题"
@@ -452,8 +487,11 @@ function CustomCreateModal({
   const [expectedArtifacts, setExpectedArtifacts] = useState('')
   const [systemPrompt, setSystemPrompt] = useState('')
 
+  const [consolidatePrompt, setConsolidatePrompt] = useState('')
+  const [integratePrompt, setIntegratePrompt] = useState('')
+
   const [showAdvanced, setShowAdvanced] = useState(false)
-  const [advancedTab, setAdvancedTab] = useState<'sessions' | 'skills'>('sessions')
+  const [advancedTab, setAdvancedTab] = useState<'sessions' | 'skills' | 'prompts'>('sessions')
   const [presetSessions, setPresetSessions] = useState<PresetSessionDraft[]>([])
   const [skills, setSkills] = useState<SkillDraft[]>([])
 
@@ -478,11 +516,16 @@ function CustomCreateModal({
       if (description.trim()) body.description = description.trim()
       if (expectedArtifacts.trim()) body.expectedArtifacts = expectedArtifacts.trim()
       if (systemPrompt.trim()) body.systemPrompt = systemPrompt.trim()
+      if (consolidatePrompt.trim()) body.consolidatePrompt = consolidatePrompt.trim()
+      if (integratePrompt.trim()) body.integratePrompt = integratePrompt.trim()
       const validSessions = presetSessions.filter((s) => s.name && s.label)
       if (validSessions.length > 0) {
         body.presetSessions = validSessions.map((s) => ({
           name: s.name, label: s.label,
+          systemPromptMode: s.systemPromptMode,
+          context: s.context,
           ...(s.systemPrompt && { systemPrompt: s.systemPrompt }),
+          ...(s.consolidatePrompt && { consolidatePrompt: s.consolidatePrompt }),
           ...(s.guidePrompt && { guidePrompt: s.guidePrompt }),
           ...(s.activationHint && { activationHint: s.activationHint }),
         }))
@@ -598,10 +641,10 @@ function CustomCreateModal({
               className="flex items-center gap-1.5 text-xs text-text-muted hover:text-primary transition-colors"
             >
               {showAdvanced ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-              高级配置（预设节点 & 技能）
-              {(presetSessions.length > 0 || skills.length > 0) && (
+              高级配置（预设节点 & 技能 & 记忆提炼）
+              {(presetSessions.length > 0 || skills.length > 0 || consolidatePrompt || integratePrompt) && (
                 <span className="text-[10px] bg-primary-light text-primary px-1.5 rounded-full">
-                  {presetSessions.length + skills.length}
+                  {presetSessions.length + skills.length + (consolidatePrompt ? 1 : 0) + (integratePrompt ? 1 : 0)}
                 </span>
               )}
             </button>
@@ -632,6 +675,7 @@ function CustomCreateModal({
               {([
                 { key: 'sessions' as const, label: '预设节点' },
                 { key: 'skills' as const, label: '技能' },
+                { key: 'prompts' as const, label: '记忆提炼' },
               ]).map((tab) => (
                 <button
                   key={tab.key}
@@ -649,6 +693,9 @@ function CustomCreateModal({
                   )}
                   {tab.key === 'skills' && skills.length > 0 && (
                     <span className="ml-1 text-[10px] bg-primary-light text-primary px-1.5 rounded-full">{skills.length}</span>
+                  )}
+                  {tab.key === 'prompts' && (consolidatePrompt || integratePrompt) && (
+                    <span className="ml-1 text-[10px] bg-primary-light text-primary px-1.5 rounded-full">✓</span>
                   )}
                 </button>
               ))}
@@ -668,6 +715,39 @@ function CustomCreateModal({
                   技能是可被 AI 激活的 prompt 片段。AI 通过 activate_skill 工具按需加载。
                 </p>
                 <SkillEditor skills={skills} onChange={setSkills} />
+              </div>
+            )}
+            {advancedTab === 'prompts' && (
+              <div className="space-y-4">
+                <p className="text-[10px] text-text-muted">
+                  自定义 L3→L2 提炼和跨 Session 集成的提示词。留空则使用 SDK 默认提示词。
+                </p>
+                <div>
+                  <label className="block text-[11px] font-medium text-text-muted mb-1">
+                    Consolidate Prompt
+                    <span className="ml-1 text-[10px] font-normal">（L3 对话 → L2 摘要）</span>
+                  </label>
+                  <textarea
+                    value={consolidatePrompt}
+                    onChange={(e) => setConsolidatePrompt(e.target.value)}
+                    placeholder={'留空使用默认：\n将以下对话记录提炼为一段简洁的摘要...'}
+                    rows={5}
+                    className="w-full px-2 py-2 rounded border border-border bg-card text-xs font-mono placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-primary/30 resize-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-text-muted mb-1">
+                    Integrate Prompt
+                    <span className="ml-1 text-[10px] font-normal">（所有 L2 → synthesis + insights）</span>
+                  </label>
+                  <textarea
+                    value={integratePrompt}
+                    onChange={(e) => setIntegratePrompt(e.target.value)}
+                    placeholder={'留空使用默认：\n基于以下各子 Session 的摘要，生成综合认知和定向洞察...'}
+                    rows={5}
+                    className="w-full px-2 py-2 rounded border border-border bg-card text-xs font-mono placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-primary/30 resize-none"
+                  />
+                </div>
               </div>
             )}
           </div>
