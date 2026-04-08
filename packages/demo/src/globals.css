@@ -60,6 +60,12 @@ body::before {
   }
 }
 
+/* 抽屉从右侧滑入 */
+@keyframes drawerSlideIn {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
 /* 对话面板滑入 */
 @keyframes panelSlideIn {
   from { transform: translateX(-100%); opacity: 0; }

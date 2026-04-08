@@ -1,15 +1,17 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Trash2, GitFork, Upload, X } from 'lucide-react'
+import { Plus, Trash2, GitFork, Upload, X, ChevronDown } from 'lucide-react'
 import {
   listSpaces,
   createSpace,
   deleteSpace,
+  getSessionTree,
   listMarketKits,
   forkMarketKit,
   listPublished,
   publishSpace,
   type Space,
+  type SessionTreeNode,
   type MarketKit,
   type PublishedKit
 } from '../lib/api'
@@ -55,10 +57,35 @@ function Modal({
   )
 }
 
+/** 收集树的前 N 个节点标签（BFS） */
+function collectNodeLabels(tree: SessionTreeNode[], max = 6): string[] {
+  const labels: string[] = []
+  const queue = [...tree]
+  while (queue.length > 0 && labels.length < max) {
+    const node = queue.shift()!
+    labels.push(node.label)
+    queue.push(...node.children)
+  }
+  return labels
+}
+
+/** 统计树的总节点数 */
+function countNodes(tree: SessionTreeNode[]): number {
+  let count = 0
+  const queue = [...tree]
+  while (queue.length > 0) {
+    const node = queue.shift()!
+    count++
+    queue.push(...node.children)
+  }
+  return count
+}
+
 export function Home() {
   const navigate = useNavigate()
   const [tab, setTab] = useState<Tab>('spaces')
   const [spaces, setSpaces] = useState<Space[]>([])
+  const [spaceTrees, setSpaceTrees] = useState<Record<string, SessionTreeNode[]>>({})
   const [loading, setLoading] = useState(true)
 
   // Market
@@ -74,13 +101,30 @@ export function Home() {
   const [pubLabel, setPubLabel] = useState('')
   const [pubDesc, setPubDesc] = useState('')
   const [pubTags, setPubTags] = useState('')
+  const [pubModel, setPubModel] = useState('claude-sonnet-4-6')
+  const [pubVisibility, setPubVisibility] = useState<'public' | 'unlisted'>('public')
+  const [pubSystemPrompt, setPubSystemPrompt] = useState('')
+  const [pubAllowFork, setPubAllowFork] = useState(true)
+  const [pubMaxDepth, setPubMaxDepth] = useState('5')
   const [publishing, setPublishing] = useState(false)
 
   const refreshSpaces = useCallback(async () => {
     setLoading(true)
     try {
       const data = await listSpaces()
-      setSpaces(data.spaces || [])
+      const spaceList = data.spaces || []
+      setSpaces(spaceList)
+      // 加载每个 space 的 session tree
+      const trees: Record<string, SessionTreeNode[]> = {}
+      await Promise.all(
+        spaceList.map(async (s) => {
+          try {
+            const t = await getSessionTree(s.id)
+            trees[s.id] = t.tree
+          } catch { /* ignore */ }
+        })
+      )
+      setSpaceTrees(trees)
     } catch {
       /* ignore */
     }
@@ -142,7 +186,7 @@ export function Home() {
         forkName.trim() || undefined
       )
       setForkTarget(null)
-      navigate(`/space/${space.id}?new`)
+      navigate(`/space/${space.id}`)
     } catch {
       alert('Fork failed')
     }
@@ -155,6 +199,11 @@ export function Home() {
     setPubLabel('')
     setPubDesc('')
     setPubTags('')
+    setPubModel('claude-sonnet-4-6')
+    setPubVisibility('public')
+    setPubSystemPrompt('')
+    setPubAllowFork(true)
+    setPubMaxDepth('5')
     setShowPublish(true)
   }
 
@@ -177,9 +226,9 @@ export function Home() {
   }
 
   const tabs: { key: Tab; label: string }[] = [
-    { key: 'spaces', label: 'My Space' },
-    { key: 'market', label: '广场' },
-    { key: 'workshop', label: '工坊' }
+    { key: 'spaces', label: 'Kit Spaces' },
+    { key: 'market', label: 'Kit Market' },
+    { key: 'workshop', label: 'Kit Workshop' }
   ]
 
   const handFont = { fontFamily: 'var(--font-hand)' }
@@ -206,25 +255,84 @@ export function Home() {
         >
           MindKit
         </span>
-        {tabs.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className="bg-transparent border-none cursor-pointer pb-1 transition-all"
-            style={{
-              color:
-                tab === t.key ? 'var(--color-blue-pen)' : 'var(--color-pencil)',
-              borderBottom:
-                tab === t.key
-                  ? '2px solid var(--color-blue-pen)'
-                  : '2px solid transparent',
-              ...handFont,
-              fontSize: 24
-            }}
-          >
-            {t.label}
-          </button>
-        ))}
+        {tabs.map((t) => {
+          const active = tab === t.key
+          const uid = `brush-${t.key}`
+          return (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className="relative bg-transparent border-none cursor-pointer py-1 px-1 transition-all"
+              style={{
+                color: active ? 'var(--color-ink)' : 'var(--color-pencil)',
+                ...handFont,
+                fontSize: 24,
+              }}
+            >
+              {active && (
+                <svg
+                  className="absolute pointer-events-none"
+                  style={{ left: '-12%', top: '-25%', width: '130%', height: '150%', overflow: 'visible' }}
+                  viewBox="0 0 200 50"
+                  preserveAspectRatio="none"
+                >
+                  <defs>
+                    <linearGradient id={`${uid}-fade`} x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor="#3a6bc5" stopOpacity="0.42" />
+                      <stop offset="45%" stopColor="#3a6bc5" stopOpacity="0.35" />
+                      <stop offset="70%" stopColor="#3a6bc5" stopOpacity="0.18" />
+                      <stop offset="88%" stopColor="#3a6bc5" stopOpacity="0.06" />
+                      <stop offset="100%" stopColor="#3a6bc5" stopOpacity="0" />
+                    </linearGradient>
+                    <filter id={`${uid}-tex`} x="-5%" y="-30%" width="110%" height="160%">
+                      <feTurbulence type="fractalNoise" baseFrequency="0.03 0.08" numOctaves="4" seed="5" result="noise" />
+                      <feColorMatrix type="luminanceToAlpha" in="noise" result="noiseA" />
+                      <feComponentTransfer in="noiseA" result="cutoff">
+                        <feFuncA type="discrete" tableValues="0 0 0 1 1 1 1 1" />
+                      </feComponentTransfer>
+                      <feComposite in="SourceGraphic" in2="cutoff" operator="in" />
+                    </filter>
+                    <filter id={`${uid}-dry`} x="0" y="0" width="100%" height="100%">
+                      <feTurbulence type="fractalNoise" baseFrequency="0.05 0.2" numOctaves="3" seed="11" result="dry" />
+                      <feColorMatrix type="luminanceToAlpha" in="dry" result="dryA" />
+                      <feComponentTransfer in="dryA" result="dryMask">
+                        <feFuncA type="discrete" tableValues="0 0 1 1 1 1 1 1 1" />
+                      </feComponentTransfer>
+                      <feComposite in="SourceGraphic" in2="dryMask" operator="in" />
+                    </filter>
+                  </defs>
+                  <path
+                    d="M2 25 C8 17, 18 30, 45 23 S75 16, 105 25 S145 19, 170 26 C180 27, 190 24, 200 25"
+                    fill="none"
+                    stroke={`url(#${uid}-fade)`}
+                    strokeWidth="36"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    filter={`url(#${uid}-tex)`}
+                  />
+                  <path
+                    d="M8 26 C25 19, 50 32, 85 23 S125 17, 160 26 C175 28, 190 23, 198 25"
+                    fill="none"
+                    stroke="#3a6bc5"
+                    strokeOpacity="0.1"
+                    strokeWidth="22"
+                    strokeLinecap="round"
+                    filter={`url(#${uid}-dry)`}
+                  />
+                  <path
+                    d="M4 10 Q22 6, 50 9 T100 8 T150 10 Q175 9, 195 11"
+                    fill="none" stroke="#3a6bc5" strokeOpacity="0.07" strokeWidth="2.5" strokeLinecap="round"
+                  />
+                  <path
+                    d="M6 40 Q30 44, 60 41 T110 42 T160 40 Q180 41, 196 39"
+                    fill="none" stroke="#3a6bc5" strokeOpacity="0.05" strokeWidth="2" strokeLinecap="round"
+                  />
+                </svg>
+              )}
+              <span className="relative">{t.label}</span>
+            </button>
+          )
+        })}
       </nav>
 
       {/* ─── My Space ─── */}
@@ -286,7 +394,7 @@ export function Home() {
                       className="mb-3 line-clamp-2"
                       style={{
                         ...handAlt,
-                        fontSize: 14,
+                        fontSize: 16,
                         color: 'var(--color-ink)',
                         lineHeight: 1.6
                       }}
@@ -294,15 +402,40 @@ export function Home() {
                       {space.description}
                     </p>
                   )}
-                  <p
-                    style={{
-                      ...handSm,
-                      color: 'var(--color-pencil)',
-                      fontSize: 13
-                    }}
-                  >
-                    {new Date(space.createdAt).toLocaleDateString()}
-                  </p>
+                  {/* 拓扑节点标签 */}
+                  {spaceTrees[space.id] && spaceTrees[space.id].length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                      {collectNodeLabels(spaceTrees[space.id]).map((label, i) => (
+                        <span
+                          key={i}
+                          className="px-2 py-0.5 rounded-full"
+                          style={{
+                            ...handSm,
+                            fontSize: 12,
+                            background: i === 0 ? 'rgba(58,107,197,0.12)' : 'rgba(42,42,42,0.06)',
+                            color: i === 0 ? 'var(--color-blue-pen)' : 'var(--color-ink)',
+                            border: `1px solid ${i === 0 ? 'rgba(58,107,197,0.2)' : 'rgba(42,42,42,0.08)'}`,
+                          }}
+                        >
+                          {label}
+                        </span>
+                      ))}
+                      {countNodes(spaceTrees[space.id]) > 6 && (
+                        <span
+                          className="px-2 py-0.5 rounded-full"
+                          style={{ ...handSm, fontSize: 12, color: 'var(--color-pencil)' }}
+                        >
+                          +{countNodes(spaceTrees[space.id]) - 6}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  <div className="flex items-center gap-3" style={{ ...handSm, fontSize: 13, color: 'var(--color-pencil)' }}>
+                    <span>{new Date(space.createdAt).toLocaleDateString()}</span>
+                    {spaceTrees[space.id] && (
+                      <span>· {countNodes(spaceTrees[space.id])} 个节点</span>
+                    )}
+                  </div>
                   <button
                     onClick={(e) => handleDelete(space.id, e)}
                     className="absolute top-4 right-4 opacity-0 group-hover:opacity-60 transition-opacity bg-transparent border-none cursor-pointer p-1"
@@ -372,7 +505,7 @@ export function Home() {
                     className="mb-4"
                     style={{
                       ...handAlt,
-                      fontSize: 14,
+                      fontSize: 16,
                       color: 'var(--color-ink)',
                       lineHeight: 1.5
                     }}
@@ -463,7 +596,7 @@ export function Home() {
                         className="truncate"
                         style={{
                           ...handAlt,
-                          fontSize: 14,
+                          fontSize: 16,
                           color: 'var(--color-ink)'
                         }}
                       >
@@ -565,122 +698,233 @@ export function Home() {
         )}
       </Modal>
 
-      {/* ─── Publish 弹窗 ─── */}
-      <Modal open={showPublish} onClose={() => setShowPublish(false)}>
-        <h2
-          className="text-[24px] font-bold mb-4"
-          style={{ ...handFont, color: 'var(--color-ink)' }}
+      {/* ─── Publish 侧边抽屉 ─── */}
+      {showPublish && (
+        <div
+          className="fixed inset-0 z-100"
+          onClick={() => setShowPublish(false)}
         >
-          发布 Kit
-        </h2>
-        <label
-          className="block mb-1"
-          style={{ ...handSm, fontSize: 13, color: 'var(--color-pencil)' }}
-        >
-          选择 Space
-        </label>
-        <select
-          value={pubSpaceId}
-          onChange={(e) => {
-            setPubSpaceId(e.target.value)
-            const sp = spaces.find((s) => s.id === e.target.value)
-            if (sp && !pubLabel) setPubLabel(sp.label)
-          }}
-          className="w-full bg-transparent outline-none mb-4 cursor-pointer"
-          style={{
-            borderBottom: '1.5px solid var(--color-pencil)',
-            border: 'none',
-            borderBottomStyle: 'solid',
-            borderBottomWidth: '1.5px',
-            borderBottomColor: 'var(--color-pencil)',
-            padding: '6px 2px',
-            ...handFont,
-            fontSize: 18,
-            color: 'var(--color-ink)'
-          }}
-        >
-          {spaces.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.label}
-            </option>
-          ))}
-        </select>
+          <div
+            className="absolute inset-0 transition-opacity"
+            style={{ background: 'rgba(42,42,42,0.2)' }}
+          />
+          <div
+            className="absolute top-0 right-0 h-full w-full max-w-lg overflow-y-auto"
+            style={{
+              background: 'var(--color-paper)',
+              borderLeft: '1.5px solid var(--color-ink)',
+              boxShadow: '-4px 0 20px rgba(0,0,0,0.08)',
+              animation: 'drawerSlideIn 0.25s ease-out',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-8">
+              {/* 头部 */}
+              <div className="flex items-center justify-between mb-8">
+                <h2
+                  className="text-[26px] font-bold"
+                  style={{ ...handFont, color: 'var(--color-ink)' }}
+                >
+                  发布 Kit
+                </h2>
+                <button
+                  onClick={() => setShowPublish(false)}
+                  className="bg-transparent border-none cursor-pointer p-1"
+                  style={{ color: 'var(--color-pencil)' }}
+                >
+                  <X size={20} />
+                </button>
+              </div>
 
-        <label
-          className="block mb-1"
-          style={{ ...handSm, fontSize: 13, color: 'var(--color-pencil)' }}
-        >
-          标题
-        </label>
-        <input
-          value={pubLabel}
-          onChange={(e) => setPubLabel(e.target.value)}
-          placeholder="Kit 标题"
-          className="w-full border-none outline-none bg-transparent mb-4"
-          style={{
-            borderBottom: '1.5px solid var(--color-pencil)',
-            padding: '6px 2px',
-            ...handFont,
-            fontSize: 18,
-            color: 'var(--color-blue-pen)'
-          }}
-        />
+              {/* ── 基本信息 ── */}
+              <section className="mb-8">
+                <h3
+                  className="text-[18px] font-semibold mb-4 pb-2"
+                  style={{ ...handFont, color: 'var(--color-blue-pen)', borderBottom: '1px solid rgba(42,42,42,0.08)' }}
+                >
+                  基本信息
+                </h3>
 
-        <label
-          className="block mb-1"
-          style={{ ...handSm, fontSize: 13, color: 'var(--color-pencil)' }}
-        >
-          描述
-        </label>
-        <textarea
-          value={pubDesc}
-          onChange={(e) => setPubDesc(e.target.value)}
-          placeholder="简单介绍你的 Kit..."
-          rows={2}
-          className="w-full border-none outline-none bg-transparent mb-4 resize-none"
-          style={{
-            borderBottom: '1.5px solid var(--color-pencil)',
-            padding: '6px 2px',
-            ...handAlt,
-            fontSize: 16,
-            color: 'var(--color-ink)'
-          }}
-        />
+                <label className="block mb-1" style={{ ...handSm, fontSize: 13, color: 'var(--color-pencil)' }}>
+                  选择 Space
+                </label>
+                <div className="relative mb-5">
+                  <select
+                    value={pubSpaceId}
+                    onChange={(e) => {
+                      setPubSpaceId(e.target.value)
+                      const sp = spaces.find((s) => s.id === e.target.value)
+                      if (sp && !pubLabel) setPubLabel(sp.label)
+                    }}
+                    className="w-full bg-transparent outline-none cursor-pointer appearance-none"
+                    style={{
+                      borderBottom: '1.5px solid var(--color-pencil)',
+                      padding: '8px 24px 8px 2px',
+                      ...handFont,
+                      fontSize: 18,
+                      color: 'var(--color-ink)',
+                    }}
+                  >
+                    {spaces.map((s) => (
+                      <option key={s.id} value={s.id}>{s.label}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={16} className="absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--color-pencil)' }} />
+                </div>
 
-        <label
-          className="block mb-1"
-          style={{ ...handSm, fontSize: 13, color: 'var(--color-pencil)' }}
-        >
-          标签（逗号分隔）
-        </label>
-        <input
-          value={pubTags}
-          onChange={(e) => setPubTags(e.target.value)}
-          placeholder="AUTO, 产品"
-          className="w-full border-none outline-none bg-transparent mb-5"
-          style={{
-            borderBottom: '1.5px solid var(--color-pencil)',
-            padding: '6px 2px',
-            ...handFont,
-            fontSize: 16,
-            color: 'var(--color-ink)'
-          }}
-        />
+                <label className="block mb-1" style={{ ...handSm, fontSize: 13, color: 'var(--color-pencil)' }}>
+                  标题
+                </label>
+                <input
+                  value={pubLabel}
+                  onChange={(e) => setPubLabel(e.target.value)}
+                  placeholder="Kit 标题"
+                  className="w-full border-none outline-none bg-transparent mb-5"
+                  style={{ borderBottom: '1.5px solid var(--color-pencil)', padding: '8px 2px', ...handFont, fontSize: 18, color: 'var(--color-blue-pen)' }}
+                />
 
-        <button
-          onClick={handlePublish}
-          disabled={publishing || !pubLabel.trim() || !pubSpaceId}
-          className="w-full py-2.5 rounded-md border-none cursor-pointer transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
-          style={{
-            ...handFont,
-            fontSize: 18,
-            background: 'var(--color-blue-pen)',
-            color: '#fff'
-          }}
-        >
-          {publishing ? '发布中...' : '确认发布'}
-        </button>
-      </Modal>
+                <label className="block mb-1" style={{ ...handSm, fontSize: 13, color: 'var(--color-pencil)' }}>
+                  描述
+                </label>
+                <textarea
+                  value={pubDesc}
+                  onChange={(e) => setPubDesc(e.target.value)}
+                  placeholder="简单介绍你的 Kit..."
+                  rows={3}
+                  className="w-full border-none outline-none bg-transparent mb-5 resize-none"
+                  style={{ borderBottom: '1.5px solid var(--color-pencil)', padding: '8px 2px', ...handAlt, fontSize: 16, color: 'var(--color-ink)' }}
+                />
+
+                <label className="block mb-1" style={{ ...handSm, fontSize: 13, color: 'var(--color-pencil)' }}>
+                  标签（逗号分隔）
+                </label>
+                <input
+                  value={pubTags}
+                  onChange={(e) => setPubTags(e.target.value)}
+                  placeholder="AUTO, 产品, 工程"
+                  className="w-full border-none outline-none bg-transparent mb-2"
+                  style={{ borderBottom: '1.5px solid var(--color-pencil)', padding: '8px 2px', ...handFont, fontSize: 16, color: 'var(--color-ink)' }}
+                />
+              </section>
+
+              {/* ── 模型配置 ── */}
+              <section className="mb-8">
+                <h3
+                  className="text-[18px] font-semibold mb-4 pb-2"
+                  style={{ ...handFont, color: 'var(--color-blue-pen)', borderBottom: '1px solid rgba(42,42,42,0.08)' }}
+                >
+                  模型配置
+                </h3>
+
+                <label className="block mb-1" style={{ ...handSm, fontSize: 13, color: 'var(--color-pencil)' }}>
+                  默认模型
+                </label>
+                <div className="relative mb-5">
+                  <select
+                    value={pubModel}
+                    onChange={(e) => setPubModel(e.target.value)}
+                    className="w-full bg-transparent outline-none cursor-pointer appearance-none"
+                    style={{
+                      borderBottom: '1.5px solid var(--color-pencil)',
+                      padding: '8px 24px 8px 2px',
+                      ...handFont,
+                      fontSize: 16,
+                      color: 'var(--color-ink)',
+                    }}
+                  >
+                    <option value="claude-sonnet-4-6">Claude Sonnet 4.6</option>
+                    <option value="claude-opus-4-6">Claude Opus 4.6</option>
+                    <option value="claude-haiku-4-5">Claude Haiku 4.5</option>
+                    <option value="gpt-4o">GPT-4o</option>
+                    <option value="deepseek-r1">DeepSeek R1</option>
+                  </select>
+                  <ChevronDown size={16} className="absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--color-pencil)' }} />
+                </div>
+
+                <label className="block mb-1" style={{ ...handSm, fontSize: 13, color: 'var(--color-pencil)' }}>
+                  System Prompt
+                </label>
+                <textarea
+                  value={pubSystemPrompt}
+                  onChange={(e) => setPubSystemPrompt(e.target.value)}
+                  placeholder="设定 Kit 的角色和行为..."
+                  rows={4}
+                  className="w-full border-none outline-none bg-transparent mb-5 resize-none"
+                  style={{ borderBottom: '1.5px solid var(--color-pencil)', padding: '8px 2px', ...handAlt, fontSize: 15, color: 'var(--color-ink)', lineHeight: 1.6 }}
+                />
+
+                <label className="block mb-1" style={{ ...handSm, fontSize: 13, color: 'var(--color-pencil)' }}>
+                  最大对话深度
+                </label>
+                <input
+                  type="number"
+                  value={pubMaxDepth}
+                  onChange={(e) => setPubMaxDepth(e.target.value)}
+                  min={1}
+                  max={20}
+                  className="w-24 border-none outline-none bg-transparent mb-2"
+                  style={{ borderBottom: '1.5px solid var(--color-pencil)', padding: '8px 2px', ...handFont, fontSize: 16, color: 'var(--color-ink)' }}
+                />
+              </section>
+
+              {/* ── 发布选项 ── */}
+              <section className="mb-8">
+                <h3
+                  className="text-[18px] font-semibold mb-4 pb-2"
+                  style={{ ...handFont, color: 'var(--color-blue-pen)', borderBottom: '1px solid rgba(42,42,42,0.08)' }}
+                >
+                  发布选项
+                </h3>
+
+                <label className="block mb-1" style={{ ...handSm, fontSize: 13, color: 'var(--color-pencil)' }}>
+                  可见性
+                </label>
+                <div className="flex gap-3 mb-5">
+                  {(['public', 'unlisted'] as const).map((v) => (
+                    <button
+                      key={v}
+                      onClick={() => setPubVisibility(v)}
+                      className="px-4 py-1.5 rounded-md border-none cursor-pointer transition-all"
+                      style={{
+                        ...handFont,
+                        fontSize: 15,
+                        background: pubVisibility === v ? 'var(--color-blue-pen)' : 'transparent',
+                        color: pubVisibility === v ? '#fff' : 'var(--color-ink)',
+                        border: `1.5px solid ${pubVisibility === v ? 'var(--color-blue-pen)' : 'rgba(42,42,42,0.15)'}`,
+                      }}
+                    >
+                      {v === 'public' ? '公开' : '仅链接可见'}
+                    </button>
+                  ))}
+                </div>
+
+                <label
+                  className="flex items-center gap-3 cursor-pointer select-none"
+                  style={{ ...handFont, fontSize: 16, color: 'var(--color-ink)' }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={pubAllowFork}
+                    onChange={(e) => setPubAllowFork(e.target.checked)}
+                    className="w-4 h-4 cursor-pointer accent-[var(--color-blue-pen)]"
+                  />
+                  允许他人 Fork
+                </label>
+              </section>
+
+              {/* ── 提交按钮 ── */}
+              <button
+                onClick={handlePublish}
+                disabled={publishing || !pubLabel.trim() || !pubSpaceId}
+                className="w-full py-3 rounded-md border-none cursor-pointer transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
+                style={{ ...handFont, fontSize: 18, background: 'var(--color-blue-pen)', color: '#fff' }}
+              >
+                {publishing ? '发布中...' : '确认发布'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
