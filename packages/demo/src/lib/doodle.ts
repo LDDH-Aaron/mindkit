@@ -115,6 +115,7 @@ export interface LayoutNode {
   children: string[]
   parentId?: string
   sourceSessionId?: string
+  activationStatus?: 'activated' | 'inactive' | 'user-extended'
 }
 
 /** 树节点输入类型 */
@@ -122,6 +123,7 @@ interface TreeInput {
   id: string
   label: string
   sourceSessionId?: string
+  activationStatus?: 'activated' | 'inactive' | 'user-extended'
   turnCount: number
   children: TreeInput[]
 }
@@ -212,6 +214,7 @@ export function computeLayout(
       children: (node.children || []).map((c: TreeInput) => c.id),
       parentId,
       sourceSessionId: node.sourceSessionId,
+      activationStatus: node.activationStatus,
     })
 
     const children = node.children || []

@@ -4,12 +4,49 @@ const MOCK = true
 
 /* ─── Types ─── */
 
+export type SpaceMode = 'AUTO' | 'PRO'
+
 export interface Space {
   id: string
   label: string
   description: string
+  emoji: string
+  color: string
+  mode: SpaceMode
+  deliverables: string[]
   systemPrompt: string
   createdAt: string
+  lastActiveAt: string
+  /** Fork 来源 kitId（模板模式） */
+  sourceKitId?: string
+}
+
+export interface Product {
+  id: string
+  type: string
+  title: string
+  summary: string
+  sourceNodeIds: string[]
+  content: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface SpaceEvent {
+  id: string
+  type: 'node_created' | 'node_activated' | 'l2_updated' | 'insight_generated' | 'product_created' | 'product_updated' | 'cross_node_link'
+  description: string
+  nodeId?: string
+  relatedNodeIds?: string[]
+  timestamp: string
+}
+
+export interface Insight {
+  id: string
+  content: string
+  sourceNodeIds: string[]
+  sourceLabels: string[]
+  timestamp: string
 }
 
 export interface SessionTreeNode {
@@ -17,6 +54,10 @@ export interface SessionTreeNode {
   label: string
   sourceSessionId?: string
   status: 'active' | 'archived'
+  /** 模板模式下的激活状态 */
+  activationStatus?: 'activated' | 'inactive' | 'user-extended'
+  /** 模板预设的引导问题 */
+  guideQuestion?: string
   turnCount: number
   children: SessionTreeNode[]
 }
@@ -55,9 +96,9 @@ export interface PublishedKit {
 /* ─── Mock 数据 ─── */
 
 let mockSpaces: Space[] = [
-  { id: 'sp-1', label: 'AI 产品头脑风暴', description: '围绕 AI Native 产品方向展开发散讨论，涵盖用户画像、核心场景和 MVP 功能定义', systemPrompt: '', createdAt: '2026-04-08T00:00:00Z' },
-  { id: 'sp-2', label: '技术架构评审', description: '对微服务拆分方案进行多角度评审，重点关注性能瓶颈、可扩展性和部署策略', systemPrompt: '', createdAt: '2026-04-07T00:00:00Z' },
-  { id: 'sp-3', label: '创业 BP 撰写', description: '从市场分析到财务模型，逐步推演完整商业计划书，聚焦投资人关注的关键指标', systemPrompt: '', createdAt: '2026-04-06T00:00:00Z' },
+  { id: 'sp-1', label: 'AI 产品头脑风暴', emoji: '🧠', color: '#3a6bc5', mode: 'AUTO', deliverables: ['PRD 文档', '技术方案'], description: '围绕 AI Native 产品方向展开发散讨论，涵盖用户画像、核心场景和 MVP 功能定义', systemPrompt: '', createdAt: '2026-04-08T00:00:00Z', lastActiveAt: '2026-04-09T14:30:00Z' },
+  { id: 'sp-2', label: '技术架构评审', emoji: '⚙️', color: '#c94a4a', mode: 'PRO', deliverables: ['架构评审报告'], description: '对微服务拆分方案进行多角度评审，重点关注性能瓶颈、可扩展性和部署策略', systemPrompt: '', createdAt: '2026-04-07T00:00:00Z', lastActiveAt: '2026-04-09T10:15:00Z' },
+  { id: 'sp-3', label: '创业 BP 撰写', emoji: '📊', color: '#5ba85b', mode: 'AUTO', deliverables: ['商业计划书', '财务模型'], description: '从市场分析到财务模型，逐步推演完整商业计划书，聚焦投资人关注的关键指标', systemPrompt: '', createdAt: '2026-04-06T00:00:00Z', lastActiveAt: '2026-04-08T18:00:00Z', sourceKitId: 'mk-4' },
 ]
 
 const mockTrees: Record<string, SessionTreeNode[]> = {
@@ -567,18 +608,32 @@ export async function listSpaces(): Promise<{ spaces: Space[] }> {
   return request('/spaces')
 }
 
-export async function createSpace(data: { label: string; systemPrompt?: string }): Promise<{ space: Space }> {
+export async function createSpace(data: {
+  label: string
+  emoji?: string
+  color?: string
+  mode?: SpaceMode
+  description?: string
+  deliverables?: string[]
+  systemPrompt?: string
+}): Promise<{ space: Space }> {
   if (MOCK) {
     await delay()
+    const now = new Date().toISOString()
     const space: Space = {
       id: `sp-${++idCounter}`,
       label: data.label,
-      description: '',
+      emoji: data.emoji || '💡',
+      color: data.color || '#3a6bc5',
+      mode: data.mode || 'AUTO',
+      deliverables: data.deliverables || [],
+      description: data.description || '',
       systemPrompt: data.systemPrompt || '',
-      createdAt: new Date().toISOString(),
+      createdAt: now,
+      lastActiveAt: now,
     }
     mockSpaces.push(space)
-    mockTrees[space.id] = [{ id: 'main', label: 'main', status: 'active', turnCount: 0, children: [] }]
+    mockTrees[space.id] = [{ id: `${space.id}-main`, label: '主节点', status: 'active', turnCount: 0, children: [] }]
     return { space }
   }
   return request('/spaces', { method: 'POST', body: JSON.stringify(data) })
@@ -608,6 +663,7 @@ export async function sendTurn(spaceId: string, sessionId: string, _input: strin
   if (MOCK) {
     await delay(800 + Math.random() * 700)
     const reply = mockReplies[Math.floor(Math.random() * mockReplies.length)]
+    let splitNote = ''
     // 随机概率创建 fork 节点来演示拓扑分裂
     if (Math.random() > 0.6) {
       const tree = mockTrees[spaceId]
@@ -622,17 +678,28 @@ export async function sendTurn(spaceId: string, sessionId: string, _input: strin
         }
         const parent = findNode(tree, sessionId)
         if (parent) {
+          const forkLabel = _input.slice(0, 12)
           parent.children.push({
             id: `fork-${++idCounter}`,
-            label: _input.slice(0, 12),
+            label: forkLabel,
             status: 'active',
             turnCount: 0,
             children: [],
           })
+          splitNote = `\n\n✦ 话题分裂：已创建新节点「${forkLabel}」，可在拓扑图中点击进入。`
         }
       }
     }
-    return { response: reply, records: [] }
+    // 随机注入跨节点洞察提示
+    let insightNote = ''
+    if (Math.random() > 0.75) {
+      const crossInsights = [
+        '⚡ 主节点发现：该讨论与其他节点的内容存在关联，建议对齐。',
+        '💡 全局洞察：当前讨论的方向可以为其他节点提供支撑。',
+      ]
+      insightNote = '\n\n' + crossInsights[Math.floor(Math.random() * crossInsights.length)]
+    }
+    return { response: reply + splitNote + insightNote, records: [] }
   }
   return request(`/spaces/${spaceId}/sessions/${sessionId}/turn`, {
     method: 'POST',
@@ -693,17 +760,22 @@ export async function listMarketKits(): Promise<{ kits: MarketKit[] }> {
   return request('/market')
 }
 
-/** 深拷贝树并生成新 ID，同时映射消息 */
-function clonePreset(preset: KitPreset, prefix: string): { tree: SessionTreeNode[], messages: Record<string, TurnRecord[]>, l2: Record<string, string> } {
+/** 深拷贝树并生成新 ID，同时映射消息。模板模式下根节点 activated，其余 inactive */
+function clonePreset(preset: KitPreset, prefix: string, isTemplate = true): { tree: SessionTreeNode[], messages: Record<string, TurnRecord[]>, l2: Record<string, string> } {
   const idMap: Record<string, string> = {}
   let seq = 0
+  let isFirst = true
   function cloneNode(node: SessionTreeNode): SessionTreeNode {
     const newId = `${prefix}-${seq++}`
     idMap[node.id] = newId
+    const isRoot = isFirst
+    isFirst = false
     return {
       ...node,
       id: newId,
       sourceSessionId: node.sourceSessionId ? idMap[node.sourceSessionId] : undefined,
+      activationStatus: isTemplate ? (isRoot ? 'activated' : 'inactive') : undefined,
+      guideQuestion: isTemplate && !isRoot ? `描述一下你在"${node.label}"方面的想法和需求` : undefined,
       children: node.children.map(cloneNode),
     }
   }
@@ -726,12 +798,19 @@ export async function forkMarketKit(kitId: string, label?: string): Promise<{ sp
     await delay(500)
     const kit = mockMarketKits.find(k => k.id === kitId)
     if (kit) kit.forks++
+    const now = new Date().toISOString()
     const space: Space = {
       id: `sp-${++idCounter}`,
       label: label || kit?.label || 'Forked Kit',
+      emoji: '📦',
+      color: '#7E57C2',
+      mode: (kit?.tags[0] as SpaceMode) || 'AUTO',
+      deliverables: [],
       description: kit?.description || '',
       systemPrompt: '',
-      createdAt: new Date().toISOString(),
+      createdAt: now,
+      lastActiveAt: now,
+      sourceKitId: kitId,
     }
     mockSpaces.push(space)
 
@@ -773,6 +852,103 @@ export async function publishSpace(spaceId: string, data: { label: string; descr
     return { kit }
   }
   return request(`/workshop/publish`, { method: 'POST', body: JSON.stringify({ spaceId, ...data }) })
+}
+
+/* ─── Products ─── */
+
+const mockProducts: Record<string, Product[]> = {
+  'sp-1': [
+    { id: 'prod-1', type: 'PRD 文档', title: 'MindKit 产品需求文档 v0.1', summary: '基于多线程 AI 对话的思维协作工具，核心功能包括 Session Tree、拓扑可视化、跨节点意识', sourceNodeIds: ['s1-main', 's1-ux', 's1-backend'], content: '# MindKit PRD\n\n## 产品定位\nAI Native 思维协作工具...\n\n## 核心功能\n1. Session Tree 对话拓扑\n2. 多线程并行探索\n3. L1/L2/L3 三层记忆\n\n## 用户画像\n独立开发者和小团队 CTO', createdAt: '2026-04-08T12:00:00Z', updatedAt: '2026-04-09T10:00:00Z' },
+    { id: 'prod-2', type: '技术方案', title: '技术架构设计文档', summary: 'Hono + WS 后端架构，文件系统持久化，Stello SDK 集成方案', sourceNodeIds: ['s1-backend', 's1-db', 's1-api'], content: '# 技术架构\n\n## 后端\nHono + WebSocket\n\n## 存储\n文件系统持久化\n\n## AI\nStello SDK + RAG', createdAt: '2026-04-09T08:00:00Z', updatedAt: '2026-04-09T14:00:00Z' },
+  ],
+  'sp-2': [
+    { id: 'prod-3', type: '架构评审报告', title: '微服务化改造评审报告', summary: '从单体到微服务的改造方案，涵盖服务拆分、基础设施、性能优化三大方向', sourceNodeIds: ['s2-main', 's2-micro', 's2-infra'], content: '# 架构评审报告\n\n## 现状分析\n单体架构瓶颈...\n\n## 改造方案\n按 DDD 边界拆分...', createdAt: '2026-04-07T16:00:00Z', updatedAt: '2026-04-09T09:00:00Z' },
+  ],
+  'sp-3': [
+    { id: 'prod-4', type: '商业计划书', title: 'MindKit 商业计划书', summary: 'AI 协作工具赛道，TAM $120B，天使轮融资 $800K，Y2 盈亏平衡', sourceNodeIds: ['s3-main', 's3-market', 's3-finance'], content: '# MindKit BP\n\n## 市场机会\nTAM $120B\n\n## 产品方案\n多线程思维协作\n\n## 财务预测\nY1 ARR $600K', createdAt: '2026-04-06T14:00:00Z', updatedAt: '2026-04-08T16:00:00Z' },
+    { id: 'prod-5', type: '财务模型', title: '三年财务预测模型', summary: 'Y1-Y3 营收预测、成本结构、盈亏平衡分析', sourceNodeIds: ['s3-finance', 's3-finance-rev', 's3-finance-cost'], content: '# 财务模型\n\n## Y1\nARR $600K\n\n## Y2\nARR $3.6M\n\n## Y3\nARR $12M', createdAt: '2026-04-08T12:00:00Z', updatedAt: '2026-04-08T17:00:00Z' },
+  ],
+}
+
+export async function getProducts(spaceId: string): Promise<{ products: Product[] }> {
+  if (MOCK) { await delay(); return { products: mockProducts[spaceId] || [] } }
+  return request(`/spaces/${spaceId}/products`)
+}
+
+/* ─── Events ─── */
+
+const mockEvents: Record<string, SpaceEvent[]> = {
+  'sp-1': [
+    { id: 'evt-1', type: 'node_created', description: '创建核心构思节点，开始产品方向探索', nodeId: 's1-main', timestamp: '2026-04-08T09:00:00Z' },
+    { id: 'evt-2', type: 'node_created', description: '话题分裂：从核心构思中拆分出 UX 设计线', nodeId: 's1-ux', timestamp: '2026-04-08T09:10:00Z' },
+    { id: 'evt-3', type: 'node_created', description: '话题分裂：从核心构思中拆分出后端架构线', nodeId: 's1-backend', timestamp: '2026-04-08T09:20:00Z' },
+    { id: 'evt-4', type: 'l2_updated', description: 'UX 设计节点摘要更新：确定手绘涂鸦风格方案', nodeId: 's1-ux', timestamp: '2026-04-08T09:15:00Z' },
+    { id: 'evt-5', type: 'cross_node_link', description: '发现关联：后端架构引用了 UX 线的接口需求', nodeId: 's1-backend', relatedNodeIds: ['s1-ux'], timestamp: '2026-04-08T09:25:00Z' },
+    { id: 'evt-6', type: 'node_created', description: '话题分裂：从核心构思中拆分出 AI 能力线', nodeId: 's1-ai', timestamp: '2026-04-08T11:00:00Z' },
+    { id: 'evt-7', type: 'insight_generated', description: '全局洞察：UX 的移动端方案需要 API 做字段裁剪适配', nodeId: 's1-main', relatedNodeIds: ['s1-ux-mobile', 's1-api'], timestamp: '2026-04-08T10:15:00Z' },
+    { id: 'evt-8', type: 'product_created', description: '产物生成：MindKit 产品需求文档 v0.1', nodeId: 's1-main', timestamp: '2026-04-08T12:00:00Z' },
+    { id: 'evt-9', type: 'cross_node_link', description: '发现关联：RAG 检索方案依赖数据模型的 embedding 设计', nodeId: 's1-ai-rag', relatedNodeIds: ['s1-db'], timestamp: '2026-04-08T11:15:00Z' },
+    { id: 'evt-10', type: 'product_created', description: '产物生成：技术架构设计文档', nodeId: 's1-backend', timestamp: '2026-04-09T08:00:00Z' },
+    { id: 'evt-11', type: 'product_updated', description: '产物更新：PRD 补充了 AI 能力章节', nodeId: 's1-ai', timestamp: '2026-04-09T10:00:00Z' },
+    { id: 'evt-12', type: 'insight_generated', description: '全局洞察：Agent 编排框架可复用 RAG 的检索能力', nodeId: 's1-main', relatedNodeIds: ['s1-ai-agent', 's1-ai-rag'], timestamp: '2026-04-09T11:00:00Z' },
+  ],
+  'sp-2': [
+    { id: 'evt-20', type: 'node_created', description: '创建架构总览节点', nodeId: 's2-main', timestamp: '2026-04-07T14:00:00Z' },
+    { id: 'evt-21', type: 'node_created', description: '话题分裂：微服务拆分策略', nodeId: 's2-micro', timestamp: '2026-04-07T14:10:00Z' },
+    { id: 'evt-22', type: 'node_created', description: '话题分裂：基础设施规划', nodeId: 's2-infra', timestamp: '2026-04-07T14:50:00Z' },
+    { id: 'evt-23', type: 'cross_node_link', description: '发现关联：CI/CD 需引用微服务拆分的构建单元', nodeId: 's2-infra-ci', relatedNodeIds: ['s2-micro'], timestamp: '2026-04-07T15:12:00Z' },
+    { id: 'evt-24', type: 'insight_generated', description: '全局洞察：性能优化应优先做缓存层，异步化依赖消息队列就绪', nodeId: 's2-main', relatedNodeIds: ['s2-perf', 's2-micro-mq'], timestamp: '2026-04-07T15:25:00Z' },
+    { id: 'evt-25', type: 'product_created', description: '产物生成：微服务化改造评审报告', nodeId: 's2-main', timestamp: '2026-04-07T16:00:00Z' },
+  ],
+  'sp-3': [
+    { id: 'evt-30', type: 'node_created', description: '创建 BP 大纲节点', nodeId: 's3-main', timestamp: '2026-04-06T10:00:00Z' },
+    { id: 'evt-31', type: 'node_created', description: '话题分裂：市场分析', nodeId: 's3-market', timestamp: '2026-04-06T10:10:00Z' },
+    { id: 'evt-32', type: 'cross_node_link', description: '发现关联：产品方案引用了市场分析的用户画像结论', nodeId: 's3-product', relatedNodeIds: ['s3-market'], timestamp: '2026-04-06T10:45:00Z' },
+    { id: 'evt-33', type: 'insight_generated', description: '全局洞察：TAM 数据已具备生成营收预测的条件', nodeId: 's3-main', relatedNodeIds: ['s3-market-tam', 's3-finance-rev'], timestamp: '2026-04-06T11:25:00Z' },
+    { id: 'evt-34', type: 'product_created', description: '产物生成：MindKit 商业计划书', nodeId: 's3-main', timestamp: '2026-04-06T14:00:00Z' },
+    { id: 'evt-35', type: 'product_updated', description: '产物更新：BP 补充了财务模型章节', nodeId: 's3-finance', timestamp: '2026-04-08T16:00:00Z' },
+  ],
+}
+
+export async function getEvents(spaceId: string): Promise<{ events: SpaceEvent[] }> {
+  if (MOCK) { await delay(); return { events: mockEvents[spaceId] || [] } }
+  return request(`/spaces/${spaceId}/events`)
+}
+
+/* ─── Insights ─── */
+
+const mockInsights: Record<string, Insight[]> = {
+  'sp-1': [
+    { id: 'ins-1', content: 'UX 的移动端适配方案与 API 设计需要对齐——移动端需要字段裁剪和分页，建议 API 层统一处理', sourceNodeIds: ['s1-ux-mobile', 's1-api'], sourceLabels: ['移动端适配', 'API 设计'], timestamp: '2026-04-08T10:15:00Z' },
+    { id: 'ins-2', content: 'RAG 检索的 embedding 方案直接依赖数据模型设计，建议两条线对齐 chunk 粒度和索引策略', sourceNodeIds: ['s1-ai-rag', 's1-db'], sourceLabels: ['RAG 检索', '数据模型'], timestamp: '2026-04-08T11:15:00Z' },
+    { id: 'ins-3', content: 'Agent 编排可复用 RAG 的向量检索能力作为内置工具，避免重复开发', sourceNodeIds: ['s1-ai-agent', 's1-ai-rag'], sourceLabels: ['Agent 编排', 'RAG 检索'], timestamp: '2026-04-09T11:00:00Z' },
+  ],
+  'sp-2': [
+    { id: 'ins-4', content: '性能优化的缓存层设计需要等消息队列选型确定后再展开，因为缓存失效策略依赖事件驱动', sourceNodeIds: ['s2-perf-cache', 's2-micro-mq'], sourceLabels: ['缓存策略', '消息队列'], timestamp: '2026-04-07T15:25:00Z' },
+    { id: 'ins-5', content: 'CI/CD 流水线的构建单元需要跟随微服务拆分粒度，建议同步推进', sourceNodeIds: ['s2-infra-ci', 's2-micro'], sourceLabels: ['CI/CD 流水线', '微服务拆分'], timestamp: '2026-04-07T15:12:00Z' },
+  ],
+  'sp-3': [
+    { id: 'ins-6', content: 'TAM 测算数据已完成，营收预测模型可以开始搭建', sourceNodeIds: ['s3-market-tam', 's3-finance-rev'], sourceLabels: ['TAM 测算', '营收预测'], timestamp: '2026-04-06T11:25:00Z' },
+    { id: 'ins-7', content: '产品方案中的用户价值描述与市场分析中的客群画像高度一致，叙事逻辑自洽', sourceNodeIds: ['s3-product', 's3-market'], sourceLabels: ['产品方案', '市场分析'], timestamp: '2026-04-06T10:45:00Z' },
+  ],
+}
+
+export async function getInsights(spaceId: string): Promise<{ insights: Insight[] }> {
+  if (MOCK) { await delay(); return { insights: mockInsights[spaceId] || [] } }
+  return request(`/spaces/${spaceId}/insights`)
+}
+
+/* ─── Space Settings ─── */
+
+export async function updateSpace(spaceId: string, data: Partial<Pick<Space, 'label' | 'emoji' | 'color' | 'mode' | 'deliverables' | 'description' | 'systemPrompt'>>): Promise<{ space: Space }> {
+  if (MOCK) {
+    await delay()
+    const space = mockSpaces.find(s => s.id === spaceId)
+    if (!space) throw new Error('Space not found')
+    Object.assign(space, data)
+    return { space: { ...space } }
+  }
+  return request(`/spaces/${spaceId}`, { method: 'PATCH', body: JSON.stringify(data) })
 }
 
 /* ─── WebSocket (mock 下不连接) ─── */

@@ -31,6 +31,54 @@ body {
   height: 100vh;
 }
 
+/* ─── 便签卡片 ─── */
+
+/* 折角效果 */
+.sticky-note {
+  position: relative;
+}
+.sticky-note::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 0 28px 28px;
+  border-color: transparent transparent var(--color-paper) transparent;
+  z-index: 2;
+}
+.sticky-note::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 28px;
+  height: 28px;
+  background: linear-gradient(135deg, transparent 50%, rgba(0,0,0,0.06) 50%, rgba(0,0,0,0.03) 100%);
+  z-index: 1;
+}
+
+/* 胶带装饰 */
+.tape-top {
+  position: relative;
+}
+.tape-top > .tape {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-2deg);
+  width: 64px;
+  height: 18px;
+  background: rgba(255,255,255,0.45);
+  border: 1px solid rgba(200,200,200,0.3);
+  border-radius: 1px;
+  z-index: 3;
+  backdrop-filter: blur(1px);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+
 /* 极简滚动条 */
 ::-webkit-scrollbar { width: 3px; }
 ::-webkit-scrollbar-thumb { background: rgba(42, 42, 42, 0.1); border-radius: 2px; }
@@ -54,7 +102,7 @@ body::before {
     transform: translate(-50%, -50%) scale(1);
   }
   100% {
-    left: calc(380px + (100vw - 380px) / 2);
+    left: 70%;
     top: 50%;
     transform: translate(-50%, -50%) scale(1);
   }
@@ -76,6 +124,22 @@ body::before {
 @keyframes topoFadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+/* 新节点分裂动画 */
+@keyframes nodeSpawn {
+  0% {
+    transform: scale(0.2);
+    opacity: 1;
+  }
+  60% {
+    transform: scale(1.8);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
 }
 
 /* 页面淡入 */

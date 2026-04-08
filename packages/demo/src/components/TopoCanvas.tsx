@@ -16,6 +16,9 @@ export function TopoCanvas({ spaceId, tree, activeNodeId, onNodeClick }: TopoCan
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [tooltip, setTooltip] = useState<{ x: number; y: number; label: string; l2: string | null } | null>(null)
   const l2Cache = useRef<Map<string, string | null>>(new Map())
+  // 新节点动画追踪
+  const knownNodeIds = useRef<Set<string>>(new Set())
+  const [newNodeIds, setNewNodeIds] = useState<Set<string>>(new Set())
 
   // 画布平移状态
   const [pan, setPan] = useState({ x: 0, y: 0 })
@@ -24,15 +27,54 @@ export function TopoCanvas({ spaceId, tree, activeNodeId, onNodeClick }: TopoCan
   const panStart = useRef({ x: 0, y: 0 })
   const hasDragged = useRef(false)
 
-  // 重新计算布局
+  // 构建 turnCount 映射（用于亮度渲染）
+  const turnCountMap = useRef<Map<string, number>>(new Map())
   useEffect(() => {
+    const map = new Map<string, number>()
+    const walk = (nodes: SessionTreeNode[]) => {
+      for (const n of nodes) {
+        map.set(n.id, n.turnCount)
+        walk(n.children)
+      }
+    }
+    walk(tree)
+    turnCountMap.current = map
+  }, [tree])
+
+  // 重新计算布局（tree 变化或容器尺寸变化时）
+  const reLayout = useCallback(() => {
     const el = containerRef.current
     if (!el || tree.length === 0) return
     const { width, height } = el.getBoundingClientRect()
+    if (width === 0 || height === 0) return
     const layout = computeLayout(tree, width, height)
     setNodes(layout)
     setPan({ x: 0, y: 0 })
+
+    // 检测新节点
+    const currentIds = new Set(layout.map(n => n.id))
+    const fresh = new Set<string>()
+    for (const id of currentIds) {
+      if (!knownNodeIds.current.has(id)) fresh.add(id)
+    }
+    knownNodeIds.current = currentIds
+    if (fresh.size > 0) {
+      setNewNodeIds(fresh)
+      // 动画结束后清除
+      setTimeout(() => setNewNodeIds(new Set()), 600)
+    }
   }, [tree])
+
+  useEffect(() => { reLayout() }, [reLayout])
+
+  // 监听容器尺寸变化（抽屉展开/收起时触发）
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const ro = new ResizeObserver(() => reLayout())
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [reLayout])
 
   // 屏幕坐标 → 画布坐标
   const toCanvas = useCallback((screenX: number, screenY: number) => {
@@ -97,20 +139,27 @@ export function TopoCanvas({ spaceId, tree, activeNodeId, onNodeClick }: TopoCan
       }
     }
 
-    // 绘制节点（核心节点更大更醒目）
+    // 绘制节点（核心节点更大更醒目，inactive 节点半透明，亮度映射活跃度）
     for (const node of nodes) {
       const isActive = activeNodeId === node.id
       const isHovered = hoveredId === node.id
-      scribbleNode(ctx, node.x, node.y, node.r, node.color, (isActive || isHovered) ? 1 : 0.8, isActive || isHovered)
+      const isInactive = node.activationStatus === 'inactive'
+      // 亮度映射：turnCount 越高越亮（0.5 ~ 1.0 范围）
+      const tc = turnCountMap.current.get(node.id) || 0
+      const activityAlpha = Math.min(1, 0.5 + tc * 0.1)
+      const baseAlpha = isInactive ? 0.3 : (isActive || isHovered) ? 1 : activityAlpha
+      const nodeColor = isInactive ? '#999999' : node.color
+      scribbleNode(ctx, node.x, node.y, node.r, nodeColor, baseAlpha, isActive || isHovered)
     }
 
     // 绘制标签
     for (const node of nodes) {
       const isActive = activeNodeId === node.id
       const isCore = !node.parentId
+      const isInactive = node.activationStatus === 'inactive'
       ctx.font = isCore ? '18px "Caveat", cursive' : '14px "Caveat", cursive'
       ctx.textAlign = 'center'
-      ctx.fillStyle = (isActive || hoveredId === node.id) ? node.color : isCore ? 'rgba(34,34,34,0.7)' : 'rgba(34,34,34,0.5)'
+      ctx.fillStyle = isInactive ? 'rgba(34,34,34,0.2)' : (isActive || hoveredId === node.id) ? node.color : isCore ? 'rgba(34,34,34,0.7)' : 'rgba(34,34,34,0.5)'
       ctx.fillText(node.label || node.id.slice(0, 6), node.x, node.y + node.r + (isCore ? 22 : 16))
     }
 
@@ -216,6 +265,27 @@ export function TopoCanvas({ spaceId, tree, activeNodeId, onNodeClick }: TopoCan
         style={{ cursor: dragging.current ? 'grabbing' : hoveredId ? 'pointer' : 'grab' }}
       />
 
+      {/* 新节点分裂动画 */}
+      {Array.from(newNodeIds).map(id => {
+        const node = nodes.find(n => n.id === id)
+        if (!node) return null
+        return (
+          <div
+            key={`anim-${id}`}
+            className="absolute pointer-events-none z-10"
+            style={{
+              left: node.x + pan.x - 24,
+              top: node.y + pan.y - 24,
+              width: 48,
+              height: 48,
+              borderRadius: '50%',
+              border: `2px solid ${node.color}`,
+              animation: 'nodeSpawn 0.6s ease-out forwards',
+            }}
+          />
+        )
+      })}
+
       {/* 标题 */}
       <div className="absolute top-5 left-6 z-10 pointer-events-none" style={{ transform: 'rotate(-2deg)' }}>
         <h1
@@ -255,6 +325,31 @@ export function TopoCanvas({ spaceId, tree, activeNodeId, onNodeClick }: TopoCan
           L1 awareness
         </div>
       </div>
+
+      {/* 模板进度 */}
+      {nodes.some(n => n.activationStatus) && (() => {
+        const total = nodes.filter(n => n.activationStatus === 'activated' || n.activationStatus === 'inactive').length
+        const activated = nodes.filter(n => n.activationStatus === 'activated').length
+        const done = total > 0 && activated >= total
+        return (
+          <div
+            className="absolute top-5 right-6 z-10 pointer-events-none"
+            style={{ fontFamily: 'var(--font-hand-sm)', fontSize: 14, color: 'var(--color-pencil)' }}
+          >
+            <div className="flex items-center gap-2">
+              <span style={{ color: done ? 'var(--color-green-hl)' : 'var(--color-blue-pen)', fontWeight: 600 }}>
+                {activated} / {total}
+              </span>
+              <span>节点已完成</span>
+            </div>
+            {done && (
+              <div style={{ fontSize: 12, color: 'var(--color-green-hl)', marginTop: 2 }}>
+                ✓ 已完成基础流程
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* Tooltip with L2 */}
       {tooltip && (
