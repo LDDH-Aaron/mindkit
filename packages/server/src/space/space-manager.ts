@@ -1,0 +1,200 @@
+import * as fs from 'node:fs/promises'
+import * as path from 'node:path'
+import * as crypto from 'node:crypto'
+import type { StelloAgent } from '@stello-ai/core'
+import type { PresetConfig } from '../preset/preset-loader'
+import { createSpaceAgent } from './space-factory'
+import { EventBus } from '../events/event-bus'
+import { ArtifactStore } from '../artifacts/artifact-store'
+
+/** Space 元数据，存储在 space 数据目录下的 meta.json */
+export interface SpaceMeta {
+  id: string
+  name: string
+  presetDirName: string
+  createdAt: string
+  emoji: string
+  color: string
+  description?: string
+  mode: 'AUTO' | 'PRO'
+  expectedArtifacts?: string
+  presetSessions?: PresetSession[]
+  skills?: SpaceSkill[]
+}
+
+/** createSpace 的可选扩展字段 */
+export interface SpaceCreateOptions {
+  emoji?: string
+  color?: string
+  description?: string
+  mode?: 'AUTO' | 'PRO'
+  expectedArtifacts?: string
+  presetSessions?: PresetSession[]
+  skills?: SpaceSkill[]
+}
+
+/** 预设节点（底层注册为 ForkProfile） */
+export interface PresetSession {
+  name: string
+  label: string
+  systemPrompt?: string
+  guidePrompt?: string
+  activationHint?: string
+  skills?: string[]
+}
+
+/** Space 级别的技能定义 */
+export interface SpaceSkill {
+  name: string
+  description: string
+  content: string
+}
+
+/** updateSpace 可修改的字段子集 */
+export type SpaceUpdatePatch = Partial<Pick<SpaceMeta,
+  'name' | 'emoji' | 'color' | 'description' | 'mode' |
+  'expectedArtifacts' | 'presetSessions' | 'skills'
+>>
+
+/** SpaceManager 初始化配置 */
+export interface SpaceManagerOptions {
+  /** 所有 Space 数据目录的根路径（如 data/spaces） */
+  spacesDir: string
+  /** 可用的 preset 列表 */
+  presets: PresetConfig[]
+  /** 环境变量（API key 等） */
+  env: Record<string, string | undefined>
+}
+
+/** Space CRUD + 懒加载 StelloAgent 缓存 */
+export class SpaceManager {
+  private readonly spacesDir: string
+  private readonly presets: Map<string, PresetConfig>
+  private readonly env: Record<string, string | undefined>
+  /** 懒加载缓存：spaceId → StelloAgent */
+  private readonly agents: Map<string, StelloAgent> = new Map()
+  /** 懒加载缓存：spaceId → EventBus */
+  private readonly eventBuses: Map<string, EventBus> = new Map()
+
+  constructor(opts: SpaceManagerOptions) {
+    this.spacesDir = opts.spacesDir
+    this.env = opts.env
+    this.presets = new Map(opts.presets.map((p) => [p.dirName, p]))
+  }
+
+  /** 列出所有已创建的 Space 元数据 */
+  async listSpaces(): Promise<SpaceMeta[]> {
+    let names: string[]
+    try {
+      const entries = await fs.readdir(this.spacesDir, { withFileTypes: true })
+      names = entries.filter((e) => e.isDirectory()).map((e) => e.name)
+    } catch {
+      return []
+    }
+
+    const results: SpaceMeta[] = []
+    for (const name of names) {
+      const meta = await this.readMeta(name).catch(() => null)
+      if (meta) results.push(meta)
+    }
+    return results
+  }
+
+  /** 创建新 Space：生成 id、写入 meta.json、返回元数据 */
+  async createSpace(name: string, presetDirName: string, options?: SpaceCreateOptions): Promise<SpaceMeta> {
+    if (!this.presets.has(presetDirName)) {
+      throw new Error(`Preset not found: ${presetDirName}`)
+    }
+
+    const id = crypto.randomUUID()
+    const spaceDir = path.join(this.spacesDir, id)
+    await fs.mkdir(spaceDir, { recursive: true })
+
+    const meta: SpaceMeta = {
+      id,
+      name,
+      presetDirName,
+      createdAt: new Date().toISOString(),
+      emoji: options?.emoji ?? '🧠',
+      color: options?.color ?? '#6366f1',
+      mode: options?.mode ?? 'AUTO',
+      ...(options?.description !== undefined && { description: options.description }),
+      ...(options?.expectedArtifacts !== undefined && { expectedArtifacts: options.expectedArtifacts }),
+      ...(options?.presetSessions !== undefined && { presetSessions: options.presetSessions }),
+      ...(options?.skills !== undefined && { skills: options.skills }),
+    }
+    await fs.writeFile(
+      path.join(spaceDir, 'meta.json'),
+      JSON.stringify(meta, null, 2),
+    )
+    return meta
+  }
+
+  /** 获取 Space 元数据 */
+  async getSpace(id: string): Promise<SpaceMeta | null> {
+    return this.readMeta(id).catch(() => null)
+  }
+
+  /** 部分更新 Space 元数据，返回更新后的 meta；不存在时返回 null */
+  async updateSpace(id: string, patch: SpaceUpdatePatch): Promise<SpaceMeta | null> {
+    const existing = await this.getSpace(id)
+    if (!existing) return null
+
+    const updated: SpaceMeta = { ...existing, ...patch }
+    const spaceDir = path.join(this.spacesDir, id)
+    await fs.writeFile(
+      path.join(spaceDir, 'meta.json'),
+      JSON.stringify(updated, null, 2),
+    )
+    return updated
+  }
+
+  /** 删除 Space：清除缓存并递归删除数据目录 */
+  async deleteSpace(id: string): Promise<void> {
+    this.agents.delete(id)
+    this.eventBuses.delete(id)
+    const spaceDir = path.join(this.spacesDir, id)
+    await fs.rm(spaceDir, { recursive: true, force: true })
+  }
+
+  /** 获取或创建 Space 对应的 StelloAgent（懒加载，单例缓存） */
+  getAgent(id: string, meta: SpaceMeta): StelloAgent {
+    const cached = this.agents.get(id)
+    if (cached) return cached
+
+    const preset = this.presets.get(meta.presetDirName)
+    if (!preset) throw new Error(`Preset not found: ${meta.presetDirName}`)
+
+    const agent = createSpaceAgent({
+      dataDir: path.join(this.spacesDir, id),
+      config: preset,
+      env: this.env,
+      spaceMeta: meta,
+      eventBus: this.getEventBus(id),
+    })
+    this.agents.set(id, agent)
+    return agent
+  }
+
+  /** 获取 Space 的 EventBus（懒创建） */
+  getEventBus(spaceId: string): EventBus {
+    let bus = this.eventBuses.get(spaceId)
+    if (!bus) {
+      bus = new EventBus()
+      this.eventBuses.set(spaceId, bus)
+    }
+    return bus
+  }
+
+  /** 获取 Space 的 ArtifactStore */
+  getArtifactStore(spaceId: string): ArtifactStore {
+    return new ArtifactStore(path.join(this.spacesDir, spaceId))
+  }
+
+  /** 读取指定 spaceId 的 meta.json */
+  private async readMeta(spaceId: string): Promise<SpaceMeta> {
+    const metaPath = path.join(this.spacesDir, spaceId, 'meta.json')
+    const raw = await fs.readFile(metaPath, 'utf-8')
+    return JSON.parse(raw) as SpaceMeta
+  }
+}

@@ -5,7 +5,7 @@
 ## Clone
 
 ```bash
-git clone --recurse-submodules git@github.com:uchouT/MindKit.git
+git clone --recurse-submodules git@github.com:eddiewjy/MindKit.git
 cd MindKit
 ```
 
