@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Trash2, GitBranch, ChevronDown, ChevronRight, X } from 'lucide-react'
+import { Plus, Trash2, GitBranch, ChevronDown, ChevronRight, X, Store, Wrench, ArrowLeft, Eye } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { fetchSpaces, fetchPresets, createSpace, deleteSpace } from '@/lib/api'
-import type { SpaceMeta, PresetSummary } from '@/lib/types'
+import type { SpaceMeta, PresetConfig } from '@/lib/types'
 
 /* ─── Emoji 选择器 ─── */
 
@@ -195,27 +195,263 @@ function SkillEditor({ skills, onChange }: { skills: SkillDraft[]; onChange: (s:
   )
 }
 
-/* ─── 创建 Kit 弹窗 ─── */
+/* ─── Market 弹窗：浏览 preset 并一键创建（配置只读） ─── */
 
-function CreateKitModal({
+function MarketModal({
   presets,
   onClose,
   onCreated,
 }: {
-  presets: PresetSummary[]
+  presets: PresetConfig[]
   onClose: () => void
   onCreated: (meta: SpaceMeta) => void
 }) {
-  // 基础配置
+  const [selected, setSelected] = useState<PresetConfig | null>(null)
+  const [name, setName] = useState('')
+  const [emoji, setEmoji] = useState('🧠')
+  const [color, setColor] = useState('#6366f1')
+  const [showDetail, setShowDetail] = useState(false)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const selectPreset = (p: PresetConfig) => {
+    setSelected(p)
+    setEmoji(p.emoji)
+    setColor(p.color)
+    setName('')
+    setShowDetail(false)
+  }
+
+  const handleCreate = async () => {
+    if (!selected || !name.trim()) return
+    setLoading(true)
+    setError('')
+    try {
+      const meta = await createSpace({
+        name: name.trim(),
+        presetDirName: selected.dirName,
+        emoji,
+        color,
+      })
+      onCreated(meta)
+      onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onClose}>
+      <div
+        className="bg-card rounded-xl shadow-2xl w-[640px] max-h-[85vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="px-6 pt-6 pb-4 border-b border-border">
+          <div className="flex items-center gap-2 mb-1">
+            <Store size={18} className="text-primary" />
+            <h2 className="text-lg font-semibold">Kit Market</h2>
+          </div>
+          <p className="text-xs text-text-muted">选择一个预置模板，快速创建认知空间</p>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6">
+          {/* Preset 网格 */}
+          {!selected ? (
+            <div className="grid grid-cols-2 gap-3">
+              {presets.map((p) => (
+                <button
+                  key={p.dirName}
+                  onClick={() => selectPreset(p)}
+                  className="flex flex-col items-start gap-2 p-4 rounded-xl border border-border bg-surface hover:border-primary/40 hover:shadow-md transition-all text-left group"
+                >
+                  <div className="flex items-center gap-2 w-full">
+                    <span className="text-2xl">{p.emoji}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-semibold truncate group-hover:text-primary transition-colors">{p.name}</div>
+                    </div>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0"
+                      style={{ backgroundColor: p.color + '20', color: p.color }}
+                    >
+                      {p.mode}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-text-muted line-clamp-2">{p.description}</p>
+                  <div className="flex gap-2 mt-1">
+                    {p.forkProfiles.length > 0 && (
+                      <span className="text-[10px] bg-muted text-text-muted px-1.5 py-0.5 rounded">
+                        {p.forkProfiles.length} 预设节点
+                      </span>
+                    )}
+                    {p.skills.length > 0 && (
+                      <span className="text-[10px] bg-muted text-text-muted px-1.5 py-0.5 rounded">
+                        {p.skills.length} 技能
+                      </span>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            /* 已选 preset — 配置预览 + 命名 */
+            <div className="space-y-5">
+              {/* 返回按钮 */}
+              <button
+                onClick={() => setSelected(null)}
+                className="flex items-center gap-1 text-xs text-text-muted hover:text-primary transition-colors"
+              >
+                <ArrowLeft size={14} /> 返回列表
+              </button>
+
+              {/* Preset 信息卡 */}
+              <div className="bg-surface rounded-xl border border-border p-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="text-3xl">{selected.emoji}</span>
+                  <div>
+                    <h3 className="text-base font-semibold">{selected.name}</h3>
+                    <p className="text-xs text-text-muted">{selected.description}</p>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-medium ml-auto shrink-0"
+                    style={{ backgroundColor: selected.color + '20', color: selected.color }}
+                  >
+                    {selected.mode}
+                  </span>
+                </div>
+
+                {/* 只读预览 toggle */}
+                <button
+                  onClick={() => setShowDetail(!showDetail)}
+                  className="flex items-center gap-1 text-[11px] text-text-muted hover:text-primary transition-colors"
+                >
+                  <Eye size={12} />
+                  {showDetail ? '收起配置详情' : '查看配置详情'}
+                  {showDetail ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                </button>
+
+                {showDetail && (
+                  <div className="mt-3 space-y-3">
+                    {/* System Prompt */}
+                    <div>
+                      <label className="block text-[10px] font-medium text-text-muted mb-1">系统提示词</label>
+                      <div className="px-3 py-2 rounded-lg bg-card border border-border text-xs font-mono text-text-secondary whitespace-pre-wrap max-h-32 overflow-y-auto">
+                        {selected.systemPrompt || '(使用默认)'}
+                      </div>
+                    </div>
+
+                    {/* Fork Profiles */}
+                    {selected.forkProfiles.length > 0 && (
+                      <div>
+                        <label className="block text-[10px] font-medium text-text-muted mb-1">
+                          预设节点 ({selected.forkProfiles.length})
+                        </label>
+                        <div className="space-y-1.5">
+                          {selected.forkProfiles.map((fp, i) => (
+                            <div key={i} className="px-3 py-2 rounded-lg bg-card border border-border">
+                              <div className="text-xs font-medium">{fp.name}</div>
+                              {fp.systemPrompt && (
+                                <div className="text-[10px] text-text-muted mt-1 line-clamp-2 font-mono">{fp.systemPrompt}</div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Skills */}
+                    {selected.skills.length > 0 && (
+                      <div>
+                        <label className="block text-[10px] font-medium text-text-muted mb-1">
+                          技能 ({selected.skills.length})
+                        </label>
+                        <div className="space-y-1.5">
+                          {selected.skills.map((sk, i) => (
+                            <div key={i} className="px-3 py-2 rounded-lg bg-card border border-border">
+                              <div className="text-xs font-medium">{sk.name}</div>
+                              <div className="text-[10px] text-text-muted">{sk.description}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {selected.expectedArtifacts && (
+                      <div>
+                        <label className="block text-[10px] font-medium text-text-muted mb-1">预期产物</label>
+                        <div className="px-3 py-2 rounded-lg bg-card border border-border text-xs text-text-secondary">
+                          {selected.expectedArtifacts}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* 用户可编辑部分：名称、emoji、颜色 */}
+              <div className="space-y-4">
+                <div className="flex gap-3 items-start">
+                  <EmojiPicker value={emoji} onChange={setEmoji} />
+                  <div className="flex-1">
+                    <label className="block text-[11px] font-medium text-text-muted mb-1">空间名称 *</label>
+                    <input
+                      type="text" value={name} onChange={(e) => setName(e.target.value)}
+                      placeholder="给你的空间起个名字"
+                      className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-sm placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-medium text-text-muted mb-1.5">空间颜色</label>
+                  <ColorPicker value={color} onChange={setColor} />
+                </div>
+              </div>
+
+              {error && <p className="text-sm text-error bg-error/10 rounded-lg px-3 py-2">{error}</p>}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-border flex justify-end gap-2">
+          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm text-text-secondary hover:bg-muted transition-colors">取消</button>
+          {selected && (
+            <button
+              onClick={handleCreate}
+              disabled={!name.trim() || loading}
+              className="px-5 py-2 rounded-lg text-sm font-medium text-white transition-colors disabled:opacity-40"
+              style={{ backgroundColor: color }}
+            >
+              {loading ? '创建中...' : '使用此模板创建'}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ─── 自定义创建弹窗：所有字段可编辑 ─── */
+
+function CustomCreateModal({
+  presets,
+  onClose,
+  onCreated,
+}: {
+  presets: PresetConfig[]
+  onClose: () => void
+  onCreated: (meta: SpaceMeta) => void
+}) {
   const [emoji, setEmoji] = useState('🧠')
   const [color, setColor] = useState('#6366f1')
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [presetDirName, setPresetDirName] = useState(presets[0]?.dirName ?? '')
   const [mode, setMode] = useState<'AUTO' | 'PRO'>('AUTO')
   const [expectedArtifacts, setExpectedArtifacts] = useState('')
+  const [systemPrompt, setSystemPrompt] = useState('')
 
-  // 高级配置
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [advancedTab, setAdvancedTab] = useState<'sessions' | 'skills'>('sessions')
   const [presetSessions, setPresetSessions] = useState<PresetSessionDraft[]>([])
@@ -224,36 +460,38 @@ function CreateKitModal({
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  // 使用第一个 preset 作为 base（后端需要 presetDirName）
+  const baseDirName = presets[0]?.dirName ?? ''
+
   const handleCreate = async () => {
-    if (!name.trim() || !presetDirName) return
+    if (!name.trim()) return
     setLoading(true)
     setError('')
     try {
-      const body: Record<string, unknown> = {
+      const body: Parameters<typeof createSpace>[0] = {
         name: name.trim(),
-        presetDirName,
+        presetDirName: baseDirName,
         emoji,
         color,
         mode,
       }
       if (description.trim()) body.description = description.trim()
       if (expectedArtifacts.trim()) body.expectedArtifacts = expectedArtifacts.trim()
-      if (presetSessions.length > 0) {
-        body.presetSessions = presetSessions
-          .filter((s) => s.name && s.label)
-          .map((s) => ({
-            name: s.name, label: s.label,
-            ...(s.systemPrompt && { systemPrompt: s.systemPrompt }),
-            ...(s.guidePrompt && { guidePrompt: s.guidePrompt }),
-            ...(s.activationHint && { activationHint: s.activationHint }),
-          }))
+      if (systemPrompt.trim()) body.systemPrompt = systemPrompt.trim()
+      const validSessions = presetSessions.filter((s) => s.name && s.label)
+      if (validSessions.length > 0) {
+        body.presetSessions = validSessions.map((s) => ({
+          name: s.name, label: s.label,
+          ...(s.systemPrompt && { systemPrompt: s.systemPrompt }),
+          ...(s.guidePrompt && { guidePrompt: s.guidePrompt }),
+          ...(s.activationHint && { activationHint: s.activationHint }),
+        }))
       }
-      if (skills.length > 0) {
-        body.skills = skills
-          .filter((s) => s.name && s.description && s.content)
-          .map((s) => ({ name: s.name, description: s.description, content: s.content }))
+      const validSkills = skills.filter((s) => s.name && s.description && s.content)
+      if (validSkills.length > 0) {
+        body.skills = validSkills
       }
-      const meta = await createSpace(body as Parameters<typeof createSpace>[0])
+      const meta = await createSpace(body)
       onCreated(meta)
       onClose()
     } catch (err) {
@@ -268,13 +506,16 @@ function CreateKitModal({
       <div
         className={cn(
           'bg-card rounded-xl shadow-2xl flex max-h-[85vh] transition-all duration-300',
-          showAdvanced ? 'w-[860px]' : 'w-[460px]',
+          showAdvanced ? 'w-[900px]' : 'w-[480px]',
         )}
         onClick={(e) => e.stopPropagation()}
       >
         {/* 左栏：基础配置 */}
         <div className="flex-1 p-6 overflow-y-auto">
-          <h2 className="text-lg font-semibold mb-5">创建新空间</h2>
+          <div className="flex items-center gap-2 mb-5">
+            <Wrench size={18} className="text-primary" />
+            <h2 className="text-lg font-semibold">自定义创建</h2>
+          </div>
 
           <div className="space-y-4">
             {/* Emoji + 名称 */}
@@ -297,18 +538,16 @@ function CreateKitModal({
               <ColorPicker value={color} onChange={setColor} />
             </div>
 
-            {/* Preset */}
+            {/* 系统提示词 */}
             <div>
-              <label className="block text-[11px] font-medium text-text-muted mb-1">Preset 模板 *</label>
-              <select
-                value={presetDirName}
-                onChange={(e) => setPresetDirName(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-              >
-                {presets.map((p) => (
-                  <option key={p.dirName} value={p.dirName}>{p.name} — {p.description}</option>
-                ))}
-              </select>
+              <label className="block text-[11px] font-medium text-text-muted mb-1">系统提示词</label>
+              <textarea
+                value={systemPrompt} onChange={(e) => setSystemPrompt(e.target.value)}
+                placeholder="定义 AI 助手的角色、工作方式和回答风格"
+                rows={3}
+                className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-xs font-mono placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+              />
+              <p className="text-[10px] text-text-muted mt-0.5">工具使用规则由框架自动注入，无需手动编写</p>
             </div>
 
             {/* 描述 */}
@@ -359,7 +598,12 @@ function CreateKitModal({
               className="flex items-center gap-1.5 text-xs text-text-muted hover:text-primary transition-colors"
             >
               {showAdvanced ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-              高级配置
+              高级配置（预设节点 & 技能）
+              {(presetSessions.length > 0 || skills.length > 0) && (
+                <span className="text-[10px] bg-primary-light text-primary px-1.5 rounded-full">
+                  {presetSessions.length + skills.length}
+                </span>
+              )}
             </button>
 
             {error && <p className="text-sm text-error bg-error/10 rounded-lg px-3 py-2">{error}</p>}
@@ -370,7 +614,7 @@ function CreateKitModal({
             <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm text-text-secondary hover:bg-muted transition-colors">取消</button>
             <button
               onClick={handleCreate}
-              disabled={!name.trim() || !presetDirName || loading}
+              disabled={!name.trim() || loading}
               className="px-5 py-2 rounded-lg text-sm font-medium bg-primary text-white hover:bg-primary-dark transition-colors disabled:opacity-40"
               style={{ backgroundColor: color }}
             >
@@ -381,10 +625,9 @@ function CreateKitModal({
 
         {/* 右栏：高级配置（可折叠） */}
         {showAdvanced && (
-          <div className="w-[380px] border-l border-border p-5 overflow-y-auto bg-surface/50">
+          <div className="w-[400px] border-l border-border p-5 overflow-y-auto bg-surface/50">
             <h3 className="text-sm font-semibold mb-3">高级配置</h3>
 
-            {/* Tab 切换 */}
             <div className="flex border-b border-border mb-4">
               {([
                 { key: 'sessions' as const, label: '预设节点' },
@@ -411,7 +654,6 @@ function CreateKitModal({
               ))}
             </div>
 
-            {/* Tab 内容 */}
             {advancedTab === 'sessions' && (
               <div>
                 <p className="text-[10px] text-text-muted mb-3">
@@ -440,8 +682,9 @@ function CreateKitModal({
 export function SpaceList() {
   const navigate = useNavigate()
   const [spaces, setSpaces] = useState<SpaceMeta[]>([])
-  const [presets, setPresets] = useState<PresetSummary[]>([])
-  const [showCreate, setShowCreate] = useState(false)
+  const [presets, setPresets] = useState<PresetConfig[]>([])
+  const [showMarket, setShowMarket] = useState(false)
+  const [showCustom, setShowCustom] = useState(false)
   const [loading, setLoading] = useState(true)
 
   const refresh = useCallback(() => {
@@ -468,11 +711,18 @@ export function SpaceList() {
             <h1 className="text-2xl font-bold">My Space</h1>
             <p className="text-text-muted text-sm mt-1">你的 AI 认知空间集合</p>
           </div>
-          <button onClick={() => setShowCreate(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary-dark transition-colors"
-          >
-            <Plus size={16} /> 创建新空间
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setShowMarket(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary-dark transition-colors"
+            >
+              <Store size={16} /> Kit Market
+            </button>
+            <button onClick={() => setShowCustom(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-card text-sm font-medium text-text-secondary hover:bg-muted transition-colors"
+            >
+              <Wrench size={16} /> 自定义创建
+            </button>
+          </div>
         </div>
 
         {loading ? (
@@ -481,9 +731,15 @@ export function SpaceList() {
           <div className="flex flex-col items-center justify-center py-20 text-text-muted">
             <GitBranch size={48} className="mb-4 opacity-30" />
             <p className="text-lg mb-2">还没有任何空间</p>
-            <button onClick={() => setShowCreate(true)} className="text-primary hover:underline text-sm">
-              创建你的第一个 Kit
-            </button>
+            <div className="flex gap-3 mt-2">
+              <button onClick={() => setShowMarket(true)} className="flex items-center gap-1.5 text-primary hover:underline text-sm">
+                <Store size={14} /> 从 Market 选择
+              </button>
+              <span className="text-text-muted">或</span>
+              <button onClick={() => setShowCustom(true)} className="flex items-center gap-1.5 text-primary hover:underline text-sm">
+                <Wrench size={14} /> 自定义创建
+              </button>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -520,19 +776,22 @@ export function SpaceList() {
                 </div>
               </div>
             ))}
-            <div onClick={() => setShowCreate(true)}
-              className="border-2 border-dashed border-border rounded-xl p-5 flex items-center justify-center cursor-pointer hover:border-primary/40 hover:bg-primary-light/30 transition-all min-h-[120px]"
-            >
-              <span className="text-text-muted flex items-center gap-2"><Plus size={18} /> 创建新空间</span>
-            </div>
           </div>
         )}
       </div>
 
-      {showCreate && presets.length > 0 && (
-        <CreateKitModal
+      {showMarket && presets.length > 0 && (
+        <MarketModal
           presets={presets}
-          onClose={() => setShowCreate(false)}
+          onClose={() => setShowMarket(false)}
+          onCreated={(meta) => navigate(`/kit/${meta.id}`)}
+        />
+      )}
+
+      {showCustom && presets.length > 0 && (
+        <CustomCreateModal
+          presets={presets}
+          onClose={() => setShowCustom(false)}
           onCreated={(meta) => navigate(`/kit/${meta.id}`)}
         />
       )}

@@ -1,4 +1,4 @@
-import type { SpaceMeta, PresetSummary, SessionTreeNode, TurnRecord, TurnResult, SpaceEvent } from './types'
+import type { SpaceMeta, PresetConfig, SessionTreeNode, TurnRecord, TurnResult, SpaceEvent } from './types'
 
 const BASE = '/api'
 
@@ -17,7 +17,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 /* ── Presets ── */
 
-export function fetchPresets(): Promise<PresetSummary[]> {
+/** 获取所有可用 preset（完整配置，供前端预填） */
+export function fetchPresets(): Promise<PresetConfig[]> {
   return request('/presets')
 }
 
@@ -27,6 +28,7 @@ export function fetchSpaces(): Promise<SpaceMeta[]> {
   return request('/spaces')
 }
 
+/** 创建 Space（body 中 preset 字段作为默认值，用户字段覆盖） */
 export function createSpace(body: {
   name: string
   presetDirName: string
@@ -35,7 +37,13 @@ export function createSpace(body: {
   description?: string
   mode?: 'AUTO' | 'PRO'
   expectedArtifacts?: string
-  [key: string]: unknown
+  systemPrompt?: string
+  presetSessions?: Array<{
+    name: string; label: string
+    systemPrompt?: string; guidePrompt?: string
+    activationHint?: string; skills?: string[]
+  }>
+  skills?: Array<{ name: string; description: string; content: string }>
 }): Promise<SpaceMeta> {
   return request('/spaces', { method: 'POST', body: JSON.stringify(body) })
 }

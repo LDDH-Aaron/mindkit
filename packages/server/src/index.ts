@@ -48,7 +48,7 @@ async function main(): Promise<void> {
 
   // 构建 Hono 应用
   const app = new Hono()
-  app.route('/api', buildRoutes(spaceManager, presets))
+  app.route('/api', buildRoutes(spaceManager))
 
   // 生产环境：serve 前端静态文件
   if (fs.existsSync(WEB_DIST)) {

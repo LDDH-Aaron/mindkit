@@ -1,20 +1,24 @@
 import { Hono } from 'hono'
-import type { SpaceManager, SpaceMeta, SpaceUpdatePatch } from '../space/space-manager'
-import type { PresetConfig } from '../preset/preset-loader'
+import type { SpaceManager, SpaceMeta, SpaceUpdatePatch, SpaceCreateBody } from '../space/space-manager'
 
-/** 构建 REST API 路由，注入 SpaceManager 和 preset 列表 */
-export function buildRoutes(
-  spaceManager: SpaceManager,
-  presets: PresetConfig[],
-): Hono {
+/** 构建 REST API 路由，注入 SpaceManager */
+export function buildRoutes(spaceManager: SpaceManager): Hono {
   const app = new Hono()
 
-  /** GET /presets — 列出所有可用 preset */
+  /** GET /presets — 列出所有可用 preset（返回完整配置供前端预填） */
   app.get('/presets', (c) => {
+    const presets = spaceManager.getPresets()
     const list = presets.map((p) => ({
       dirName: p.dirName,
       name: p.name,
       description: p.description,
+      emoji: p.emoji,
+      color: p.color,
+      mode: p.mode,
+      expectedArtifacts: p.expectedArtifacts,
+      systemPrompt: p.systemPrompt,
+      forkProfiles: p.forkProfiles,
+      skills: p.skills,
     }))
     return c.json(list)
   })
@@ -25,19 +29,14 @@ export function buildRoutes(
     return c.json(spaces)
   })
 
-  /** POST /spaces — 创建新 Space */
+  /** POST /spaces — 创建新 Space（从 preset 合并默认值） */
   app.post('/spaces', async (c) => {
-    const body = await c.req.json<{
-      name?: string
-      presetDirName?: string
-      [key: string]: unknown
-    }>()
+    const body = await c.req.json<SpaceCreateBody>()
     if (!body.name || !body.presetDirName) {
       return c.json({ error: 'name and presetDirName are required' }, 400)
     }
     try {
-      const { name, presetDirName, ...options } = body
-      const meta = await spaceManager.createSpace(name, presetDirName, options)
+      const meta = await spaceManager.createSpace(body)
       return c.json(meta, 201)
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)

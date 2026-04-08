@@ -11,6 +11,7 @@ import { ArtifactStore } from '../artifacts/artifact-store'
 export interface SpaceMeta {
   id: string
   name: string
+  /** 来源 preset 标识（可为空表示手动创建） */
   presetDirName: string
   createdAt: string
   emoji: string
@@ -18,17 +19,24 @@ export interface SpaceMeta {
   description?: string
   mode: 'AUTO' | 'PRO'
   expectedArtifacts?: string
+  /** 领域特定系统提示词（不含框架级 tool 说明） */
+  systemPrompt: string
+  /** 预设节点（注册为 ForkProfile） */
   presetSessions?: PresetSession[]
+  /** 技能列表 */
   skills?: SpaceSkill[]
 }
 
-/** createSpace 的可选扩展字段 */
-export interface SpaceCreateOptions {
+/** createSpace 的请求体 */
+export interface SpaceCreateBody {
+  name: string
+  presetDirName: string
   emoji?: string
   color?: string
   description?: string
   mode?: 'AUTO' | 'PRO'
   expectedArtifacts?: string
+  systemPrompt?: string
   presetSessions?: PresetSession[]
   skills?: SpaceSkill[]
 }
@@ -53,7 +61,7 @@ export interface SpaceSkill {
 /** updateSpace 可修改的字段子集 */
 export type SpaceUpdatePatch = Partial<Pick<SpaceMeta,
   'name' | 'emoji' | 'color' | 'description' | 'mode' |
-  'expectedArtifacts' | 'presetSessions' | 'skills'
+  'expectedArtifacts' | 'systemPrompt' | 'presetSessions' | 'skills'
 >>
 
 /** SpaceManager 初始化配置 */
@@ -82,6 +90,11 @@ export class SpaceManager {
     this.presets = new Map(opts.presets.map((p) => [p.dirName, p]))
   }
 
+  /** 获取所有可用 preset */
+  getPresets(): PresetConfig[] {
+    return [...this.presets.values()]
+  }
+
   /** 列出所有已创建的 Space 元数据 */
   async listSpaces(): Promise<SpaceMeta[]> {
     let names: string[]
@@ -100,28 +113,49 @@ export class SpaceManager {
     return results
   }
 
-  /** 创建新 Space：生成 id、写入 meta.json、返回元数据 */
-  async createSpace(name: string, presetDirName: string, options?: SpaceCreateOptions): Promise<SpaceMeta> {
-    if (!this.presets.has(presetDirName)) {
-      throw new Error(`Preset not found: ${presetDirName}`)
+  /** 创建新 Space：从 preset 合并默认值，用户字段覆盖 */
+  async createSpace(body: SpaceCreateBody): Promise<SpaceMeta> {
+    const preset = this.presets.get(body.presetDirName)
+    if (!preset) {
+      throw new Error(`Preset not found: ${body.presetDirName}`)
     }
 
     const id = crypto.randomUUID()
     const spaceDir = path.join(this.spacesDir, id)
     await fs.mkdir(spaceDir, { recursive: true })
 
+    // preset 提供默认值，用户传入的字段覆盖
     const meta: SpaceMeta = {
       id,
-      name,
-      presetDirName,
+      name: body.name,
+      presetDirName: body.presetDirName,
       createdAt: new Date().toISOString(),
-      emoji: options?.emoji ?? '🧠',
-      color: options?.color ?? '#6366f1',
-      mode: options?.mode ?? 'AUTO',
-      ...(options?.description !== undefined && { description: options.description }),
-      ...(options?.expectedArtifacts !== undefined && { expectedArtifacts: options.expectedArtifacts }),
-      ...(options?.presetSessions !== undefined && { presetSessions: options.presetSessions }),
-      ...(options?.skills !== undefined && { skills: options.skills }),
+      emoji: body.emoji ?? preset.emoji,
+      color: body.color ?? preset.color,
+      mode: body.mode ?? preset.mode,
+      systemPrompt: body.systemPrompt ?? preset.systemPrompt,
+      ...(body.description !== undefined
+        ? { description: body.description }
+        : preset.description ? { description: preset.description } : {}),
+      ...((body.expectedArtifacts ?? preset.expectedArtifacts)
+        ? { expectedArtifacts: body.expectedArtifacts ?? preset.expectedArtifacts }
+        : {}),
+      // skills/forkProfiles: 用户传入则用用户的，否则用 preset 的
+      ...(body.presetSessions !== undefined
+        ? { presetSessions: body.presetSessions }
+        : preset.forkProfiles.length > 0
+          ? { presetSessions: preset.forkProfiles.map((fp) => ({
+              name: fp.name,
+              label: fp.name,
+              systemPrompt: fp.systemPrompt,
+              skills: fp.skills,
+            })) }
+          : {}),
+      ...(body.skills !== undefined
+        ? { skills: body.skills }
+        : preset.skills.length > 0
+          ? { skills: preset.skills }
+          : {}),
     }
     await fs.writeFile(
       path.join(spaceDir, 'meta.json'),
@@ -146,6 +180,8 @@ export class SpaceManager {
       path.join(spaceDir, 'meta.json'),
       JSON.stringify(updated, null, 2),
     )
+    // 清除 agent 缓存（配置已变更）
+    this.agents.delete(id)
     return updated
   }
 

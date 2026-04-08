@@ -9,13 +9,49 @@ export interface SpaceMeta {
   description?: string
   mode: 'AUTO' | 'PRO'
   expectedArtifacts?: string
+  systemPrompt: string
+  presetSessions?: PresetSession[]
+  skills?: SpaceSkill[]
 }
 
-/** Preset 摘要 */
-export interface PresetSummary {
+/** 预设节点 */
+export interface PresetSession {
+  name: string
+  label: string
+  systemPrompt?: string
+  guidePrompt?: string
+  activationHint?: string
+  skills?: string[]
+}
+
+/** 技能定义 */
+export interface SpaceSkill {
+  name: string
+  description: string
+  content: string
+}
+
+/** ForkProfile（preset 中定义） */
+export interface PresetForkProfile {
+  name: string
+  systemPrompt?: string
+  systemPromptMode?: 'preset' | 'prepend' | 'append'
+  context?: 'none' | 'inherit'
+  skills?: string[]
+}
+
+/** Preset 完整配置（Kit Market 商品） */
+export interface PresetConfig {
   dirName: string
   name: string
   description: string
+  emoji: string
+  color: string
+  mode: 'AUTO' | 'PRO'
+  expectedArtifacts: string
+  systemPrompt: string
+  forkProfiles: PresetForkProfile[]
+  skills: SpaceSkill[]
 }
 
 /** 递归拓扑树节点（core SessionTreeNode） */

@@ -3,42 +3,47 @@ import { resolveLLM, toLLMCallFn } from '../llm/resolve-llm'
 
 describe('resolveLLM', () => {
   const env = {
-    ANTHROPIC_API_KEY: 'test-anthropic-key',
     OPENAI_API_KEY: 'test-openai-key',
+    OPENAI_BASE_URL: 'https://api.minimaxi.com/v1',
   }
 
-  it('routes claude-* models to an adapter with maxContextTokens', () => {
+  it('creates adapter for any model when OPENAI_API_KEY is set', () => {
     const adapter = resolveLLM('claude-sonnet-4-20250514', env)
     expect(adapter).toBeDefined()
     expect(adapter.maxContextTokens).toBeGreaterThan(0)
   })
 
-  it('routes gpt-* models to an adapter', () => {
+  it('creates adapter for gpt-* models', () => {
     const adapter = resolveLLM('gpt-4o', env)
     expect(adapter).toBeDefined()
     expect(adapter.maxContextTokens).toBeGreaterThan(0)
   })
 
-  it('routes o3-* models to an adapter', () => {
+  it('creates adapter for o3-* models', () => {
     const adapter = resolveLLM('o3-mini', env)
     expect(adapter).toBeDefined()
   })
 
-  it('routes o4-* models to an adapter', () => {
+  it('creates adapter for o4-* models', () => {
     const adapter = resolveLLM('o4-mini', env)
     expect(adapter).toBeDefined()
   })
 
-  it('throws for unknown model prefix', () => {
-    expect(() => resolveLLM('llama-3', env)).toThrow('Unsupported model')
+  it('creates adapter for custom models (e.g. MiniMax)', () => {
+    const adapter = resolveLLM('MiniMax-M2.7', env)
+    expect(adapter).toBeDefined()
   })
 
-  it('throws with env var name when ANTHROPIC_API_KEY is missing', () => {
-    expect(() => resolveLLM('claude-sonnet-4-20250514', {})).toThrow('ANTHROPIC_API_KEY')
-  })
-
-  it('throws with env var name when OPENAI_API_KEY is missing', () => {
+  it('throws when OPENAI_API_KEY is missing', () => {
     expect(() => resolveLLM('gpt-4o', {})).toThrow('OPENAI_API_KEY')
+  })
+
+  it('respects OPENAI_MAX_CONTEXT_TOKENS env var', () => {
+    const adapter = resolveLLM('test-model', {
+      ...env,
+      OPENAI_MAX_CONTEXT_TOKENS: '50000',
+    })
+    expect(adapter.maxContextTokens).toBe(50000)
   })
 })
 

@@ -11,6 +11,10 @@ const TEST_PRESET: PresetConfig = {
   dirName: 'test-preset',
   name: 'Test Preset',
   description: 'A test preset',
+  emoji: '🧠',
+  color: '#6366f1',
+  mode: 'AUTO',
+  expectedArtifacts: '',
   systemPrompt: 'You are a test assistant.',
   forkProfiles: [],
   skills: [],
@@ -58,7 +62,7 @@ describe('SpaceManager', () => {
     })
 
     it('returns created spaces', async () => {
-      await manager.createSpace('My Space', 'test-preset')
+      await manager.createSpace({ name: 'My Space', presetDirName: 'test-preset' })
       const spaces = await manager.listSpaces()
       expect(spaces).toHaveLength(1)
       expect(spaces[0]!.name).toBe('My Space')
@@ -75,7 +79,7 @@ describe('SpaceManager', () => {
 
   describe('createSpace', () => {
     it('creates space and returns meta with id and createdAt', async () => {
-      const meta = await manager.createSpace('Test Space', 'test-preset')
+      const meta = await manager.createSpace({ name: 'Test Space', presetDirName: 'test-preset' })
       expect(meta.id).toBeDefined()
       expect(meta.name).toBe('Test Space')
       expect(meta.presetDirName).toBe('test-preset')
@@ -83,7 +87,7 @@ describe('SpaceManager', () => {
     })
 
     it('writes meta.json to the space directory', async () => {
-      const meta = await manager.createSpace('Test Space', 'test-preset')
+      const meta = await manager.createSpace({ name: 'Test Space', presetDirName: 'test-preset' })
       const raw = await fs.readFile(
         path.join(spacesDir, meta.id, 'meta.json'),
         'utf-8',
@@ -94,21 +98,21 @@ describe('SpaceManager', () => {
     })
 
     it('throws if presetDirName is unknown', async () => {
-      await expect(manager.createSpace('X', 'unknown-preset')).rejects.toThrow(
+      await expect(manager.createSpace({ name: 'X', presetDirName: 'unknown-preset' })).rejects.toThrow(
         'Preset not found: unknown-preset',
       )
     })
 
     it('creates unique ids for multiple spaces', async () => {
-      const a = await manager.createSpace('A', 'test-preset')
-      const b = await manager.createSpace('B', 'test-preset')
+      const a = await manager.createSpace({ name: 'A', presetDirName: 'test-preset' })
+      const b = await manager.createSpace({ name: 'B', presetDirName: 'test-preset' })
       expect(a.id).not.toBe(b.id)
     })
   })
 
   describe('getSpace', () => {
     it('returns meta for existing space', async () => {
-      const created = await manager.createSpace('X', 'test-preset')
+      const created = await manager.createSpace({ name: 'X', presetDirName: 'test-preset' })
       const found = await manager.getSpace(created.id)
       expect(found).not.toBeNull()
       expect(found!.id).toBe(created.id)
@@ -122,7 +126,7 @@ describe('SpaceManager', () => {
 
   describe('deleteSpace', () => {
     it('removes the space directory', async () => {
-      const meta = await manager.createSpace('D', 'test-preset')
+      const meta = await manager.createSpace({ name: 'D', presetDirName: 'test-preset' })
       await manager.deleteSpace(meta.id)
       const exists = await fs
         .access(path.join(spacesDir, meta.id))
@@ -132,7 +136,7 @@ describe('SpaceManager', () => {
     })
 
     it('space no longer appears in listSpaces after deletion', async () => {
-      const meta = await manager.createSpace('D', 'test-preset')
+      const meta = await manager.createSpace({ name: 'D', presetDirName: 'test-preset' })
       await manager.deleteSpace(meta.id)
       const spaces = await manager.listSpaces()
       expect(spaces.find((s) => s.id === meta.id)).toBeUndefined()
@@ -145,7 +149,7 @@ describe('SpaceManager', () => {
 
   describe('getAgent', () => {
     it('throws if preset is unknown', async () => {
-      const meta = await manager.createSpace('X', 'test-preset')
+      const meta = await manager.createSpace({ name: 'X', presetDirName: 'test-preset' })
       // 篡改 presetDirName 使缓存未命中
       const badMeta = { ...meta, presetDirName: 'unknown' }
       expect(() => manager.getAgent(meta.id, badMeta)).toThrow('Preset not found: unknown')
@@ -157,7 +161,7 @@ describe('SpaceManager', () => {
         .spyOn(spaceFactory, 'createSpaceAgent')
         .mockReturnValue(fakeAgent)
 
-      const meta = await manager.createSpace('X', 'test-preset')
+      const meta = await manager.createSpace({ name: 'X', presetDirName: 'test-preset' })
       const agent1 = manager.getAgent(meta.id, meta)
       const agent2 = manager.getAgent(meta.id, meta)
 

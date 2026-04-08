@@ -11,6 +11,10 @@ const TEST_PRESET: PresetConfig = {
   dirName: 'test-preset',
   name: 'Test',
   description: '',
+  emoji: '🧠',
+  color: '#6366f1',
+  mode: 'AUTO',
+  expectedArtifacts: '',
   systemPrompt: '',
   forkProfiles: [],
   skills: [],
@@ -27,7 +31,7 @@ describe('Routes V2', () => {
   beforeEach(async () => {
     spacesDir = await fs.mkdtemp(path.join(os.tmpdir(), 'mindkit-routes-'))
     manager = new SpaceManager({ spacesDir, presets: [TEST_PRESET], env: {} })
-    app = buildRoutes(manager, [TEST_PRESET])
+    app = buildRoutes(manager)
   })
 
   afterEach(async () => {
@@ -35,7 +39,7 @@ describe('Routes V2', () => {
   })
 
   it('PATCH /spaces/:id updates meta', async () => {
-    const meta = await manager.createSpace('Kit', 'test-preset')
+    const meta = await manager.createSpace({ name: 'Kit', presetDirName: 'test-preset' })
     const res = await app.request(`/spaces/${meta.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -57,7 +61,7 @@ describe('Routes V2', () => {
   })
 
   it('GET /spaces/:id/events returns empty list initially', async () => {
-    const meta = await manager.createSpace('Kit', 'test-preset')
+    const meta = await manager.createSpace({ name: 'Kit', presetDirName: 'test-preset' })
     const res = await app.request(`/spaces/${meta.id}/events`)
     expect(res.status).toBe(200)
     const body = await res.json()
@@ -70,7 +74,7 @@ describe('Routes V2', () => {
   })
 
   it('GET /spaces/:id/artifacts returns empty list initially', async () => {
-    const meta = await manager.createSpace('Kit', 'test-preset')
+    const meta = await manager.createSpace({ name: 'Kit', presetDirName: 'test-preset' })
     const res = await app.request(`/spaces/${meta.id}/artifacts`)
     expect(res.status).toBe(200)
     const body = await res.json()
@@ -83,7 +87,7 @@ describe('Routes V2', () => {
   })
 
   it('GET /spaces/:id/artifacts/:aid returns 404 for unknown artifact', async () => {
-    const meta = await manager.createSpace('Kit', 'test-preset')
+    const meta = await manager.createSpace({ name: 'Kit', presetDirName: 'test-preset' })
     const res = await app.request(`/spaces/${meta.id}/artifacts/no-such-id`)
     expect(res.status).toBe(404)
   })

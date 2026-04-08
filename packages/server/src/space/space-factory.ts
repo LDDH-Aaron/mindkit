@@ -28,6 +28,7 @@ import type { PresetConfig } from '../preset/preset-loader'
 import type { SpaceMeta } from './space-manager'
 import type { EventBus } from '../events/event-bus'
 import { resolveLLM, toLLMCallFn } from '../llm/resolve-llm'
+import { BASE_SYSTEM_SUFFIX } from '../preset/base-config'
 
 /** SpaceFactory 构建所需的上下文 */
 export interface SpaceFactoryContext {
@@ -101,8 +102,12 @@ export function createSpaceAgent(ctx: SpaceFactoryContext): StelloAgent {
   // 共享的运行态存储（InMemoryStorageAdapter 作为 session 组件的运行时存储）
   const sessionStorage = new InMemoryStorageAdapter()
 
-  // LLM: 环境变量 LLM_MODEL 优先，preset 的 llm.model 作为 fallback
-  const model = ctx.env['LLM_MODEL'] ?? ctx.config.llm.model
+  // 组合 systemPrompt：Space 级覆盖 > preset 级，再追加框架级 tool 使用说明
+  const domainPrompt = ctx.spaceMeta?.systemPrompt ?? ctx.config.systemPrompt
+  const composedSystemPrompt = domainPrompt + '\n\n' + BASE_SYSTEM_SUFFIX
+
+  // LLM: 环境变量优先，preset 的 llm.model 作为 fallback
+  const model = ctx.env['OPENAI_MODEL'] ?? ctx.config.llm.model
   const llmAdapter = resolveLLM(model, ctx.env)
   const llmCallFn = toLLMCallFn(llmAdapter)
 
@@ -196,7 +201,7 @@ export function createSpaceAgent(ctx: SpaceFactoryContext): StelloAgent {
           sessionId,
           meta.label,
           'standard',
-          ctx.config.systemPrompt,
+          composedSystemPrompt,
         )
         const session = await loadSession(sessionId, {
           storage: sessionStorage,
@@ -221,7 +226,7 @@ export function createSpaceAgent(ctx: SpaceFactoryContext): StelloAgent {
           root.id,
           root.label,
           'main',
-          ctx.config.systemPrompt,
+          composedSystemPrompt,
         )
         const mainSession = await loadMainSession(root.id, {
           storage: sessionStorage,

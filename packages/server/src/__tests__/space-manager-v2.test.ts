@@ -9,6 +9,10 @@ const TEST_PRESET: PresetConfig = {
   dirName: 'test-preset',
   name: 'Test Preset',
   description: 'A test preset',
+  emoji: '🧠',
+  color: '#6366f1',
+  mode: 'AUTO',
+  expectedArtifacts: '',
   systemPrompt: 'You are a test assistant.',
   forkProfiles: [],
   skills: [],
@@ -31,7 +35,9 @@ describe('SpaceMeta V2 fields', () => {
   })
 
   it('createSpace accepts extended fields', async () => {
-    const meta = await manager.createSpace('Kit', 'test-preset', {
+    const meta = await manager.createSpace({
+      name: 'Kit',
+      presetDirName: 'test-preset',
       emoji: '🚀',
       color: '#ff0000',
       description: 'A hackathon kit',
@@ -46,15 +52,16 @@ describe('SpaceMeta V2 fields', () => {
   })
 
   it('createSpace uses defaults for omitted fields', async () => {
-    const meta = await manager.createSpace('Kit', 'test-preset')
+    const meta = await manager.createSpace({ name: 'Kit', presetDirName: 'test-preset' })
     expect(meta.emoji).toBe('🧠')
     expect(meta.color).toBe('#6366f1')
     expect(meta.mode).toBe('AUTO')
-    expect(meta.description).toBeUndefined()
+    // preset.description = 'A test preset'，createSpace 从 preset 合并默认值
+    expect(meta.description).toBe('A test preset')
   })
 
   it('updateSpace patches specific fields', async () => {
-    const meta = await manager.createSpace('Kit', 'test-preset')
+    const meta = await manager.createSpace({ name: 'Kit', presetDirName: 'test-preset' })
     const updated = await manager.updateSpace(meta.id, {
       name: 'Renamed Kit',
       emoji: '🎯',
@@ -74,7 +81,7 @@ describe('SpaceMeta V2 fields', () => {
   })
 
   it('updateSpace persists changes to meta.json', async () => {
-    const meta = await manager.createSpace('Kit', 'test-preset')
+    const meta = await manager.createSpace({ name: 'Kit', presetDirName: 'test-preset' })
     await manager.updateSpace(meta.id, { description: 'Updated' })
     const reloaded = await manager.getSpace(meta.id)
     expect(reloaded!.description).toBe('Updated')
