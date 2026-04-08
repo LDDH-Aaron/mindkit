@@ -276,16 +276,29 @@ export function Home() {
                   }}
                 >
                   <h3
-                    className="text-[26px] font-semibold mb-3"
+                    className="text-[26px] font-semibold mb-2"
                     style={{ ...handFont, color: 'var(--color-blue-pen)' }}
                   >
                     {space.label}
                   </h3>
+                  {space.description && (
+                    <p
+                      className="mb-3 line-clamp-2"
+                      style={{
+                        ...handAlt,
+                        fontSize: 14,
+                        color: 'var(--color-ink)',
+                        lineHeight: 1.6
+                      }}
+                    >
+                      {space.description}
+                    </p>
+                  )}
                   <p
                     style={{
                       ...handSm,
                       color: 'var(--color-pencil)',
-                      fontSize: 14
+                      fontSize: 13
                     }}
                   >
                     {new Date(space.createdAt).toLocaleDateString()}

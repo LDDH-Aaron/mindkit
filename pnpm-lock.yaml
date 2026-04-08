@@ -15,41 +15,7 @@ importers:
         specifier: ^5.7.0
         version: 5.9.3
 
-  packages/server:
-    dependencies:
-      '@hono/node-server':
-        specifier: ^1.19.11
-        version: 1.19.13(hono@4.12.12)
-      '@stello-ai/core':
-        specifier: workspace:^
-        version: link:../../stello/packages/core
-      '@stello-ai/session':
-        specifier: workspace:^
-        version: link:../../stello/packages/session
-      hono:
-        specifier: ^4.12.9
-        version: 4.12.12
-      ws:
-        specifier: ^8.20.0
-        version: 8.20.0
-    devDependencies:
-      '@types/node':
-        specifier: ^22.0.0
-        version: 22.19.17
-      '@types/ws':
-        specifier: ^8.18.1
-        version: 8.18.1
-      tsup:
-        specifier: ^8.4.0
-        version: 8.5.1(jiti@2.6.1)(postcss@8.5.9)(tsx@4.21.0)(typescript@5.9.3)
-      typescript:
-        specifier: ^5.7.0
-        version: 5.9.3
-      vitest:
-        specifier: ^3.0.0
-        version: 3.2.4(@types/debug@4.1.13)(@types/node@22.19.17)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0)
-
-  packages/web:
+  packages/demo:
     dependencies:
       lucide-react:
         specifier: ^0.468.0
@@ -94,6 +60,40 @@ importers:
       vite:
         specifier: ^6.4.1
         version: 6.4.2(@types/node@25.5.2)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0)
+
+  packages/server:
+    dependencies:
+      '@hono/node-server':
+        specifier: ^1.19.11
+        version: 1.19.13(hono@4.12.12)
+      '@stello-ai/core':
+        specifier: workspace:^
+        version: link:../../stello/packages/core
+      '@stello-ai/session':
+        specifier: workspace:^
+        version: link:../../stello/packages/session
+      hono:
+        specifier: ^4.12.9
+        version: 4.12.12
+      ws:
+        specifier: ^8.20.0
+        version: 8.20.0
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.17
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1
+      tsup:
+        specifier: ^8.4.0
+        version: 8.5.1(jiti@2.6.1)(postcss@8.5.9)(tsx@4.21.0)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/debug@4.1.13)(@types/node@22.19.17)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0)
 
   stello/packages/core:
     dependencies:

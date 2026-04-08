@@ -7,7 +7,7 @@
     "test": "pnpm -r run test",
     "typecheck": "pnpm -r run typecheck",
     "dev": "pnpm --filter @mindkit/server run dev",
-    "dev:web": "pnpm --filter @mindkit/web run dev"
+    "dev:demo": "pnpm --filter @mindkit/demo run dev"
   },
   "devDependencies": {
     "typescript": "^5.7.0",

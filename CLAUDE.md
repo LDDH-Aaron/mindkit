@@ -17,7 +17,7 @@ MindKit 是 Stello 的本地落地产品，面向终端用户：
 
 - `stello/` — git submodule，指向 stello 仓库，通过 pnpm workspace 引用
 - `packages/server/` — 本地后端（Hono + WS），核心包
-- `packages/web/` — 前端（占位）
+- `packages/demo/` — 前端 Demo
 - `market/presets/` — 内置预设配置
 - `data/` — 运行时数据（gitignore），每个 Space 一个子目录
 

@@ -48,7 +48,7 @@ cp .env.example .env
 stello/              # git submodule — Stello SDK
 packages/
   server/            # 本地后端（Hono + WS）
-  web/               # 前端（开发中）
+  demo/              # 前端 Demo
 market/presets/      # 内置预设配置
 data/                # 运行时数据（gitignore）
 ```

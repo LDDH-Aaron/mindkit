@@ -7,6 +7,7 @@ const MOCK = true
 export interface Space {
   id: string
   label: string
+  description: string
   systemPrompt: string
   createdAt: string
 }
@@ -54,9 +55,9 @@ export interface PublishedKit {
 /* ─── Mock 数据 ─── */
 
 let mockSpaces: Space[] = [
-  { id: 'sp-1', label: 'AI 产品头脑风暴', systemPrompt: '', createdAt: '2026-04-08T00:00:00Z' },
-  { id: 'sp-2', label: '技术架构评审', systemPrompt: '', createdAt: '2026-04-07T00:00:00Z' },
-  { id: 'sp-3', label: '创业 BP 撰写', systemPrompt: '', createdAt: '2026-04-06T00:00:00Z' },
+  { id: 'sp-1', label: 'AI 产品头脑风暴', description: '围绕 AI Native 产品方向展开发散讨论，涵盖用户画像、核心场景和 MVP 功能定义', systemPrompt: '', createdAt: '2026-04-08T00:00:00Z' },
+  { id: 'sp-2', label: '技术架构评审', description: '对微服务拆分方案进行多角度评审，重点关注性能瓶颈、可扩展性和部署策略', systemPrompt: '', createdAt: '2026-04-07T00:00:00Z' },
+  { id: 'sp-3', label: '创业 BP 撰写', description: '从市场分析到财务模型，逐步推演完整商业计划书，聚焦投资人关注的关键指标', systemPrompt: '', createdAt: '2026-04-06T00:00:00Z' },
 ]
 
 const mockTrees: Record<string, SessionTreeNode[]> = {
@@ -322,6 +323,7 @@ export async function createSpace(data: { label: string; systemPrompt?: string }
     const space: Space = {
       id: `sp-${++idCounter}`,
       label: data.label,
+      description: '',
       systemPrompt: data.systemPrompt || '',
       createdAt: new Date().toISOString(),
     }
@@ -449,6 +451,7 @@ export async function forkMarketKit(kitId: string, label?: string): Promise<{ sp
     const space: Space = {
       id: `sp-${++idCounter}`,
       label: label || kit?.label || 'Forked Kit',
+      description: kit?.description || '',
       systemPrompt: '',
       createdAt: new Date().toISOString(),
     }
