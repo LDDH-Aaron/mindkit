@@ -44,6 +44,7 @@ export function Workspace() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const isNew = searchParams.has('new')
+  const isDemo = searchParams.has('demo')
   const [phase, setPhase] = useState<Phase>(isNew ? 'idle' : 'active')
   const [tree, setTree] = useState<SessionTreeNode[]>([])
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
@@ -71,7 +72,7 @@ export function Workspace() {
   const [typingText, setTypingText] = useState('')
   const autoPlayingRef = useRef(false)
   const autoStepRef = useRef(0)
-  const [demoControlOpen, setDemoControlOpen] = useState(true)
+  const [demoControlOpen, setDemoControlOpen] = useState(false)
   const [demoMode, setDemoMode] = useState<'fast' | 'immersive'>('fast')
   const [playSpeed, setPlaySpeed] = useState(1) // 0.5x / 1x / 1.5x / 2x
   const playSpeedRef = useRef(1)
@@ -143,6 +144,8 @@ export function Workspace() {
   // 切换节点时加载该节点的 L3 消息和 L2 摘要
   useEffect(() => {
     if (!spaceId || !activeSessionId) return
+    // 演示模式下，未开始前不加载消息（等 pendingDemoStart 完成后再加载）
+    if (pendingDemoStart.current || (isDemo && phase !== 'active')) return
     // L3 消息
     if (messagesMap.current.has(activeSessionId)) {
       setCurrentMessages([...messagesMap.current.get(activeSessionId)!])
@@ -172,8 +175,14 @@ export function Workspace() {
   }
 
   // 纸团点击
+  // 演示模式：纸团展开后是否需要自动开始沉浸式演示
+  const pendingDemoStart = useRef(false)
+
   const handleBallClick = () => {
     if (phase !== 'idle') return
+    if (isDemo && spaceId === 'sp-1') {
+      pendingDemoStart.current = true
+    }
     setPhase('animating')
     setTimeout(() => {
       setPhase('active')
@@ -452,6 +461,32 @@ export function Workspace() {
     }
   }, [runAutoStep])
 
+  // 演示模式：进入 active 后先清空再自动开始沉浸式演示
+  useEffect(() => {
+    if (phase === 'active' && pendingDemoStart.current) {
+      pendingDemoStart.current = false
+      // 先重置数据，保证干净状态（和 resetDemo 一致）
+      autoPlayingRef.current = false
+      setAutoPlaying(false)
+      autoStepRef.current = 0
+      setAutoStepIndex(0)
+      setTypingText('')
+      resetSp1Demo()
+      messagesMap.current.clear()
+      setCurrentMessages([])
+      refreshTree()
+      setActiveSessionId('s1-main')
+      // 稍作延迟让界面渲染完毕后开始沉浸式演示
+      const timer = setTimeout(() => {
+        setDemoMode('immersive')
+        autoPlayingRef.current = true
+        setAutoPlaying(true)
+        runAutoStep()
+      }, 500)
+      return () => clearTimeout(timer)
+    }
+  }, [phase, runAutoStep, refreshTree])
+
   // 重置演示
   const resetDemo = useCallback(() => {
     // 停止自动播放
@@ -685,7 +720,7 @@ export function Workspace() {
             }}
           >
             <ChatPanel
-              messages={currentMessages}
+              messages={isDemo ? [] : currentMessages}
               onSend={handleSend}
               sending={sending}
             />

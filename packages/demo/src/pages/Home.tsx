@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Plus,
@@ -22,6 +22,7 @@ import {
   forkMarketKit,
   listPublished,
   publishSpace,
+  resetSp1Demo,
   type Space,
   type SpaceMode,
   type SessionTreeNode,
@@ -55,11 +56,9 @@ function Modal({
         style={{
           background: 'var(--color-paper)',
           border: '1px solid rgba(42,42,42,0.12)',
-          padding: '32px 32px 36px',
+          padding: '24px 28px 28px',
           boxShadow: '4px 4px 20px rgba(0,0,0,0.08)',
-          transform: 'rotate(-0.3deg)',
-          maxHeight: '85vh',
-          overflowY: 'auto'
+          transform: 'rotate(-0.3deg)'
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -284,6 +283,10 @@ export function Home() {
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [creating, setCreating] = useState(false)
 
+  // 演示自动打字
+  const [demoTyping, setDemoTyping] = useState(false)
+  const demoTypingRef = useRef(false)
+
   // 右键菜单
   const [ctxMenu, setCtxMenu] = useState<{
     x: number
@@ -365,6 +368,67 @@ export function Home() {
     setShowAdvanced(false)
     setShowCreate(true)
   }
+
+  // 演示：自动打字填充并创建
+  const DEMO_NAME = 'MindKit 产品构建'
+  const DEMO_DESC = '探索一个 AI 产品从 0 到 1 的全过程'
+  const DEMO_DELIVERABLES = 'PRD 文档, 技术方案, 竞品分析'
+
+  const startDemo = () => {
+    // 先打开 modal 并清空
+    setNewLabel('')
+    setNewEmoji('🚀')
+    setNewColor('#3a6bc5')
+    setNewDesc('')
+    setNewMode('AUTO')
+    setNewDeliverables('')
+    setNewSystemPrompt('')
+    setShowAdvanced(false)
+    setShowCreate(true)
+    setDemoTyping(true)
+    demoTypingRef.current = true
+
+    // 延迟一点开始打字，让 modal 先渲染
+    setTimeout(() => {
+      typeFields(DEMO_NAME, DEMO_DESC, DEMO_DELIVERABLES)
+    }, 400)
+  }
+
+  const typeFields = async (name: string, desc: string, deliv: string) => {
+    const maxLen = Math.max(name.length, desc.length, deliv.length)
+    for (let i = 0; i <= maxLen; i++) {
+      if (!demoTypingRef.current) return
+      await new Promise((r) => setTimeout(r, 60))
+      if (i <= name.length) setNewLabel(name.slice(0, i))
+      if (i <= desc.length) setNewDesc(desc.slice(0, i))
+      if (i <= deliv.length) setNewDeliverables(deliv.slice(0, i))
+    }
+    // 打字完成后，短暂停顿再自动提交
+    await new Promise((r) => setTimeout(r, 600))
+    if (!demoTypingRef.current) return
+    setDemoTyping(false)
+    demoTypingRef.current = false
+    // 自动触发跳转演示
+    demoAutoCreate()
+  }
+
+  const demoAutoCreate = async () => {
+    setCreating(true)
+    // 重置 sp-1 演示数据，保证干净状态
+    resetSp1Demo()
+    setShowCreate(false)
+    setCreating(false)
+    // 直接跳转到 sp-1，带 demo 参数触发沉浸模式自动播放
+    navigate('/space/sp-1?new&demo')
+  }
+
+  // modal 关闭时中断演示打字
+  useEffect(() => {
+    if (!showCreate && demoTyping) {
+      setDemoTyping(false)
+      demoTypingRef.current = false
+    }
+  }, [showCreate, demoTyping])
 
   const handleDelete = async (id: string) => {
     if (!confirm('确定删除该空间？')) return
@@ -1119,35 +1183,35 @@ export function Home() {
 
       {/* ─── 创建 Kit Modal ─── */}
       <Modal open={showCreate} onClose={() => setShowCreate(false)} wide>
-        <div className="flex gap-8">
+        <div className="flex gap-6">
           {/* 左栏：基础配置 */}
           <div className="flex-1 min-w-0">
             <h2
-              className="text-[26px] font-bold mb-5"
+              className="text-[22px] font-bold mb-3"
               style={{ ...handFont, color: 'var(--color-ink)' }}
             >
               创建新空间
             </h2>
 
             {/* Emoji + 颜色 */}
-            <div className="flex gap-6 mb-5">
+            <div className="flex gap-6 mb-3">
               <div>
                 <label
-                  className="block mb-1.5"
+                  className="block mb-1"
                   style={{
                     ...handSm,
-                    fontSize: 13,
+                    fontSize: 12,
                     color: 'var(--color-pencil)'
                   }}
                 >
                   图标
                 </label>
-                <div className="flex flex-wrap gap-1.5 max-w-[180px]">
+                <div className="flex flex-wrap gap-1 max-w-[170px]">
                   {EMOJI_OPTIONS.map((e) => (
                     <button
                       key={e}
                       onClick={() => setNewEmoji(e)}
-                      className="w-8 h-8 flex items-center justify-center rounded-md cursor-pointer border-none text-[18px] transition-transform hover:scale-110"
+                      className="w-7 h-7 flex items-center justify-center rounded-md cursor-pointer border-none text-[16px] transition-transform hover:scale-110"
                       style={{
                         background:
                           newEmoji === e
@@ -1166,21 +1230,21 @@ export function Home() {
               </div>
               <div>
                 <label
-                  className="block mb-1.5"
+                  className="block mb-1"
                   style={{
                     ...handSm,
-                    fontSize: 13,
+                    fontSize: 12,
                     color: 'var(--color-pencil)'
                   }}
                 >
                   颜色
                 </label>
-                <div className="flex gap-2">
+                <div className="flex gap-1.5">
                   {COLOR_OPTIONS.map((c) => (
                     <button
                       key={c}
                       onClick={() => setNewColor(c)}
-                      className="w-7 h-7 rounded-full cursor-pointer border-none transition-transform hover:scale-110"
+                      className="w-6 h-6 rounded-full cursor-pointer border-none transition-transform hover:scale-110"
                       style={{
                         background: c,
                         outline:
@@ -1197,8 +1261,8 @@ export function Home() {
 
             {/* 名称 */}
             <label
-              className="block mb-1"
-              style={{ ...handSm, fontSize: 13, color: 'var(--color-pencil)' }}
+              className="block mb-0.5"
+              style={{ ...handSm, fontSize: 12, color: 'var(--color-pencil)' }}
             >
               空间名称 *
             </label>
@@ -1206,20 +1270,20 @@ export function Home() {
               value={newLabel}
               onChange={(e) => setNewLabel(e.target.value)}
               placeholder="给空间起个名字"
-              className="w-full border-none outline-none bg-transparent mb-4"
+              className="w-full border-none outline-none bg-transparent mb-3"
               style={{
                 borderBottom: '1.5px solid var(--color-pencil)',
-                padding: '6px 2px',
+                padding: '4px 2px',
                 ...handFont,
-                fontSize: 20,
+                fontSize: 17,
                 color: 'var(--color-blue-pen)'
               }}
             />
 
             {/* 主题描述 */}
             <label
-              className="block mb-1"
-              style={{ ...handSm, fontSize: 13, color: 'var(--color-pencil)' }}
+              className="block mb-0.5"
+              style={{ ...handSm, fontSize: 12, color: 'var(--color-pencil)' }}
             >
               主题描述
             </label>
@@ -1227,21 +1291,21 @@ export function Home() {
               value={newDesc}
               onChange={(e) => setNewDesc(e.target.value)}
               placeholder="你想探索什么话题？"
-              rows={2}
-              className="w-full border-none outline-none bg-transparent mb-4 resize-none"
+              rows={1}
+              className="w-full border-none outline-none bg-transparent mb-3 resize-none"
               style={{
                 borderBottom: '1.5px solid var(--color-pencil)',
-                padding: '6px 2px',
+                padding: '4px 2px',
                 ...handAlt,
-                fontSize: 16,
+                fontSize: 14,
                 color: 'var(--color-ink)'
               }}
             />
 
             {/* 预期产物 */}
             <label
-              className="block mb-1"
-              style={{ ...handSm, fontSize: 13, color: 'var(--color-pencil)' }}
+              className="block mb-0.5"
+              style={{ ...handSm, fontSize: 12, color: 'var(--color-pencil)' }}
             >
               预期产物（逗号分隔，可选）
             </label>
@@ -1249,32 +1313,32 @@ export function Home() {
               value={newDeliverables}
               onChange={(e) => setNewDeliverables(e.target.value)}
               placeholder="PRD 文档, 技术方案, 竞品分析"
-              className="w-full border-none outline-none bg-transparent mb-4"
+              className="w-full border-none outline-none bg-transparent mb-3"
               style={{
                 borderBottom: '1.5px solid var(--color-pencil)',
-                padding: '6px 2px',
+                padding: '4px 2px',
                 ...handFont,
-                fontSize: 16,
+                fontSize: 14,
                 color: 'var(--color-ink)'
               }}
             />
 
             {/* 模式选择 */}
             <label
-              className="block mb-2"
-              style={{ ...handSm, fontSize: 13, color: 'var(--color-pencil)' }}
+              className="block mb-1"
+              style={{ ...handSm, fontSize: 12, color: 'var(--color-pencil)' }}
             >
               空间模式
             </label>
-            <div className="flex gap-3 mb-5">
+            <div className="flex gap-3 mb-3">
               {(['AUTO', 'PRO'] as SpaceMode[]).map((m) => (
                 <button
                   key={m}
                   onClick={() => setNewMode(m)}
-                  className="flex-1 py-2.5 rounded-lg cursor-pointer border-2 transition-all"
+                  className="flex-1 py-1.5 rounded-lg cursor-pointer border-2 transition-all"
                   style={{
                     ...handFont,
-                    fontSize: 16,
+                    fontSize: 14,
                     borderColor:
                       newMode === m
                         ? m === 'AUTO'
@@ -1296,7 +1360,7 @@ export function Home() {
                   }}
                 >
                   <div className="font-semibold">{m}</div>
-                  <div style={{ ...handSm, fontSize: 12 }}>
+                  <div style={{ ...handSm, fontSize: 11 }}>
                     {m === 'AUTO' ? 'AI 自动分裂节点' : '分裂前请求确认'}
                   </div>
                 </button>
@@ -1307,10 +1371,10 @@ export function Home() {
             <button
               onClick={handleCreate}
               disabled={!newLabel.trim() || creating}
-              className="w-full py-2.5 rounded-md border-none cursor-pointer transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
+              className="w-full py-2 rounded-md border-none cursor-pointer transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
               style={{
                 ...handFont,
-                fontSize: 18,
+                fontSize: 16,
                 background: 'var(--color-blue-pen)',
                 color: '#fff'
               }}
@@ -1836,6 +1900,35 @@ export function Home() {
           }}
         />
       )}
+
+      {/* ─── 演示入口（侧边隐藏） ─── */}
+      <button
+        onClick={startDemo}
+        className="fixed z-50 cursor-pointer border-none transition-all"
+        style={{
+          top: '50%',
+          right: 0,
+          transform: 'translateY(-50%)',
+          ...handSm,
+          fontSize: 12,
+          color: 'var(--color-blue-pen)',
+          background: 'rgba(58,107,197,0.08)',
+          border: '1px solid rgba(58,107,197,0.2)',
+          borderRight: 'none',
+          borderRadius: '8px 0 0 8px',
+          padding: '12px 6px',
+          writingMode: 'vertical-rl',
+          letterSpacing: 2
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.paddingRight = '12px'
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.paddingRight = '6px'
+        }}
+      >
+        ▶ 演示
+      </button>
     </div>
   )
 }

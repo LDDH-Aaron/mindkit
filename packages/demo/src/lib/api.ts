@@ -102,8 +102,9 @@ export interface PublishedKit {
 
 let mockSpaces: Space[] = [
   { id: 'sp-1', label: 'AI 产品头脑风暴', emoji: '🧠', color: '#3a6bc5', mode: 'AUTO', deliverables: ['PRD 文档', '技术方案'], description: '围绕 AI Native 产品方向展开发散讨论，涵盖用户画像、核心场景和 MVP 功能定义', systemPrompt: '', createdAt: '2026-04-08T00:00:00Z', lastActiveAt: '2026-04-09T14:30:00Z' },
-  { id: 'sp-2', label: '技术架构评审', emoji: '⚙️', color: '#c94a4a', mode: 'PRO', deliverables: ['架构评审报告'], description: '对微服务拆分方案进行多角度评审，重点关注性能瓶颈、可扩展性和部署策略', systemPrompt: '', createdAt: '2026-04-07T00:00:00Z', lastActiveAt: '2026-04-09T10:15:00Z' },
-  { id: 'sp-3', label: '创业 BP 撰写', emoji: '📊', color: '#5ba85b', mode: 'AUTO', deliverables: ['商业计划书', '财务模型'], description: '从市场分析到财务模型，逐步推演完整商业计划书，聚焦投资人关注的关键指标', systemPrompt: '', createdAt: '2026-04-06T00:00:00Z', lastActiveAt: '2026-04-08T18:00:00Z', sourceKitId: 'mk-4' },
+  { id: 'sp-2', label: '留学咨询规划', emoji: '🎓', color: '#7E57C2', mode: 'AUTO', deliverables: ['选校清单', '时间线规划', '文书大纲'], description: '从择校到申请，系统规划美国 CS 硕士留学全流程', systemPrompt: '', createdAt: '2026-04-05T00:00:00Z', lastActiveAt: '2026-04-09T11:00:00Z' },
+  { id: 'sp-3', label: '金融知识体系构建', emoji: '💹', color: '#c94a4a', mode: 'AUTO', deliverables: ['知识图谱', '投资框架'], description: '从宏观经济到个人投资，搭建系统性的金融认知框架', systemPrompt: '', createdAt: '2026-04-04T00:00:00Z', lastActiveAt: '2026-04-09T09:30:00Z' },
+  { id: 'sp-4', label: '高二生物·必修三', emoji: '🧬', color: '#5ba85b', mode: 'AUTO', deliverables: ['知识梳理', '易错点总结'], description: '高二上学期生物必修三核心知识点系统学习与梳理', systemPrompt: '', createdAt: '2026-04-03T00:00:00Z', lastActiveAt: '2026-04-09T08:00:00Z' },
 ]
 
 const mockTrees: Record<string, SessionTreeNode[]> = {
@@ -113,56 +114,108 @@ const mockTrees: Record<string, SessionTreeNode[]> = {
       id: 's1-main', label: 'MindKit', status: 'active', turnCount: 1, children: [],
     },
   ],
-  // ── Space 2: 技术架构评审 ──
+  // ── Space 2: 留学咨询规划 ──
   'sp-2': [
     {
-      id: 's2-main', label: '架构总览', status: 'active', turnCount: 4, children: [
+      id: 's2-main', label: '留学总览', status: 'active', turnCount: 4, children: [
         {
-          id: 's2-micro', label: '微服务拆分', status: 'active', turnCount: 3, children: [
-            { id: 's2-micro-gw', label: '网关设计', status: 'active', turnCount: 2, children: [] },
-            { id: 's2-micro-mq', label: '消息队列', status: 'active', turnCount: 2, children: [] },
-            { id: 's2-micro-svc', label: '服务注册', status: 'active', turnCount: 1, sourceSessionId: 's2-micro-gw', children: [] },
+          id: 's2-school', label: '选校策略', status: 'active', turnCount: 3, children: [
+            { id: 's2-school-reach', label: '冲刺校', status: 'active', turnCount: 2, children: [] },
+            { id: 's2-school-match', label: '匹配校', status: 'active', turnCount: 2, children: [] },
+            { id: 's2-school-safe', label: '保底校', status: 'active', turnCount: 2, sourceSessionId: 's2-school-match', children: [] },
           ],
         },
         {
-          id: 's2-infra', label: '基础设施', status: 'active', turnCount: 3, children: [
-            { id: 's2-infra-k8s', label: 'K8s 部署', status: 'active', turnCount: 2, children: [] },
-            { id: 's2-infra-ci', label: 'CI/CD 流水线', status: 'active', turnCount: 2, sourceSessionId: 's2-micro', children: [] },
+          id: 's2-bg', label: '背景提升', status: 'active', turnCount: 3, children: [
+            { id: 's2-bg-research', label: '科研经历', status: 'active', turnCount: 2, children: [] },
+            { id: 's2-bg-intern', label: '实习规划', status: 'active', turnCount: 2, children: [] },
+            { id: 's2-bg-test', label: '标化考试', status: 'active', turnCount: 2, sourceSessionId: 's2-school-reach', children: [] },
           ],
         },
         {
-          id: 's2-perf', label: '性能优化', status: 'active', turnCount: 2, sourceSessionId: 's2-micro-mq', conflictSessionId: 's2-micro', children: [
-            { id: 's2-perf-cache', label: '缓存策略', status: 'active', turnCount: 1, children: [] },
-            { id: 's2-perf-db', label: 'DB 调优', status: 'active', turnCount: 1, conflictSessionId: 's2-infra-k8s', children: [] },
+          id: 's2-doc', label: '文书准备', status: 'active', turnCount: 3, sourceSessionId: 's2-bg', children: [
+            { id: 's2-doc-ps', label: 'PS 主线', status: 'active', turnCount: 2, children: [] },
+            { id: 's2-doc-cv', label: 'CV 优化', status: 'active', turnCount: 2, sourceSessionId: 's2-bg-research', children: [] },
+            { id: 's2-doc-rl', label: '推荐信策略', status: 'active', turnCount: 1, children: [] },
+          ],
+        },
+        {
+          id: 's2-timeline', label: '时间线', status: 'active', turnCount: 2, conflictSessionId: 's2-bg-test', children: [
+            { id: 's2-timeline-fall', label: '秋季申请节奏', status: 'active', turnCount: 2, children: [] },
+            { id: 's2-timeline-spring', label: '春季备选方案', status: 'active', turnCount: 1, conflictSessionId: 's2-timeline-fall', children: [] },
           ],
         },
       ],
     },
   ],
-  // ── Space 3: 创业 BP 撰写 ──
+  // ── Space 3: 金融知识体系构建 ──
   'sp-3': [
     {
-      id: 's3-main', label: 'BP 大纲', status: 'active', turnCount: 4, children: [
+      id: 's3-main', label: '金融认知框架', status: 'active', turnCount: 4, children: [
         {
-          id: 's3-market', label: '市场分析', status: 'active', turnCount: 3, children: [
-            { id: 's3-market-tam', label: 'TAM 测算', status: 'active', turnCount: 2, children: [] },
-            { id: 's3-market-comp', label: '竞品对比', status: 'active', turnCount: 2, children: [] },
+          id: 's3-macro', label: '宏观经济', status: 'active', turnCount: 3, children: [
+            { id: 's3-macro-policy', label: '货币政策', status: 'active', turnCount: 2, children: [] },
+            { id: 's3-macro-cycle', label: '经济周期', status: 'active', turnCount: 2, children: [] },
+            { id: 's3-macro-global', label: '全球化与汇率', status: 'active', turnCount: 2, sourceSessionId: 's3-macro-policy', children: [] },
           ],
         },
         {
-          id: 's3-product', label: '产品方案', status: 'active', turnCount: 3, sourceSessionId: 's3-market', children: [
-            { id: 's3-product-mvp', label: 'MVP 定义', status: 'active', turnCount: 2, children: [] },
-            { id: 's3-product-roadmap', label: '路线图', status: 'active', turnCount: 1, sourceSessionId: 's3-market-tam', children: [] },
+          id: 's3-market', label: '资本市场', status: 'active', turnCount: 3, sourceSessionId: 's3-macro', children: [
+            { id: 's3-market-stock', label: '股票市场', status: 'active', turnCount: 2, children: [] },
+            { id: 's3-market-bond', label: '债券市场', status: 'active', turnCount: 2, conflictSessionId: 's3-market-stock', children: [] },
+            { id: 's3-market-deriv', label: '衍生品', status: 'active', turnCount: 2, children: [] },
           ],
         },
         {
-          id: 's3-finance', label: '财务模型', status: 'active', turnCount: 2, children: [
-            { id: 's3-finance-rev', label: '营收预测', status: 'active', turnCount: 2, sourceSessionId: 's3-market-tam', children: [] },
-            { id: 's3-finance-cost', label: '成本结构', status: 'active', turnCount: 1, children: [] },
+          id: 's3-invest', label: '投资策略', status: 'active', turnCount: 3, sourceSessionId: 's3-market', children: [
+            { id: 's3-invest-value', label: '价值投资', status: 'active', turnCount: 2, children: [] },
+            { id: 's3-invest-quant', label: '量化策略', status: 'active', turnCount: 2, conflictSessionId: 's3-invest-value', children: [] },
+            { id: 's3-invest-asset', label: '资产配置', status: 'active', turnCount: 2, sourceSessionId: 's3-macro-cycle', children: [] },
           ],
         },
         {
-          id: 's3-team', label: '团队介绍', status: 'active', turnCount: 1, children: [],
+          id: 's3-risk', label: '风险管理', status: 'active', turnCount: 2, sourceSessionId: 's3-invest', children: [
+            { id: 's3-risk-measure', label: '风险度量', status: 'active', turnCount: 2, children: [] },
+            { id: 's3-risk-hedge', label: '对冲策略', status: 'active', turnCount: 2, sourceSessionId: 's3-market-deriv', children: [] },
+          ],
+        },
+      ],
+    },
+  ],
+  // ── Space 4: 高二生物·必修三 ──
+  'sp-4': [
+    {
+      id: 's4-main', label: '必修三总览', status: 'active', turnCount: 4, children: [
+        {
+          id: 's4-homeostasis', label: '稳态与调节', status: 'active', turnCount: 3, children: [
+            { id: 's4-nerve', label: '神经调节', status: 'active', turnCount: 3, children: [
+              { id: 's4-nerve-reflex', label: '反射弧', status: 'active', turnCount: 2, children: [] },
+              { id: 's4-nerve-synapse', label: '突触传递', status: 'active', turnCount: 2, children: [] },
+            ] },
+            { id: 's4-hormone', label: '体液调节', status: 'active', turnCount: 3, sourceSessionId: 's4-nerve', children: [
+              { id: 's4-hormone-feedback', label: '反馈调节', status: 'active', turnCount: 2, children: [] },
+              { id: 's4-hormone-blood', label: '血糖调节', status: 'active', turnCount: 2, children: [] },
+            ] },
+            { id: 's4-immune', label: '免疫调节', status: 'active', turnCount: 3, children: [
+              { id: 's4-immune-innate', label: '非特异性免疫', status: 'active', turnCount: 2, children: [] },
+              { id: 's4-immune-adaptive', label: '特异性免疫', status: 'active', turnCount: 2, children: [] },
+            ] },
+          ],
+        },
+        {
+          id: 's4-ecosystem', label: '生态系统', status: 'active', turnCount: 3, children: [
+            { id: 's4-eco-struct', label: '生态系统结构', status: 'active', turnCount: 2, children: [] },
+            { id: 's4-eco-energy', label: '能量流动', status: 'active', turnCount: 2, children: [] },
+            { id: 's4-eco-matter', label: '物质循环', status: 'active', turnCount: 2, sourceSessionId: 's4-eco-energy', children: [] },
+            { id: 's4-eco-info', label: '信息传递', status: 'active', turnCount: 2, sourceSessionId: 's4-nerve', children: [] },
+          ],
+        },
+        {
+          id: 's4-population', label: '种群与群落', status: 'active', turnCount: 3, children: [
+            { id: 's4-pop-growth', label: '种群增长模型', status: 'active', turnCount: 2, children: [] },
+            { id: 's4-pop-community', label: '群落演替', status: 'active', turnCount: 2, children: [] },
+            { id: 's4-pop-relation', label: '种间关系', status: 'active', turnCount: 2, conflictSessionId: 's4-pop-growth', children: [] },
+          ],
         },
       ],
     },
@@ -192,30 +245,61 @@ const mockL2: Record<string, string> = {
   's1-mvp': '极简 MVP 范围：单 Space + 基础拓扑 + 手动分裂 + 单模型，砍掉 Market、跨节点洞察和多模型，4 周冲刺完成核心循环。',
   's1-plan': '落地计划分三阶段：4 周 MVP → 8 周 beta（加入 Market 和洞察）→ 正式上线，最小团队 3 人。',
   's1-roadmap': '上线路线图：W1-4 MVP → W5-8 内测 → W9 ProductHunt + HackerNews launch，成功指标 DAU 500 / 日均 Space 创建 50 / 7 日留存 40%。',
-  // Space 2
-  's2-main': '架构评审总览：梳理现有系统痛点，规划微服务化路径和基础设施升级。',
-  's2-micro': '微服务拆分策略：领域边界划分、服务通信协议、数据一致性方案。',
-  's2-micro-gw': 'API 网关设计：限流熔断、协议转换、灰度路由策略。',
-  's2-micro-mq': '消息队列选型与设计：Kafka vs RabbitMQ、消息顺序性、死信处理。',
-  's2-micro-svc': '服务注册发现：Consul/Nacos 选型、健康检查、引用网关配置联动。',
-  's2-infra': '基础设施规划：容器化部署、监控告警、日志聚合。',
-  's2-infra-k8s': 'K8s 集群设计：节点规划、HPA 策略、存储卷方案。',
-  's2-infra-ci': 'CI/CD 流水线设计：引用微服务拆分的构建单元，多环境部署策略。',
-  's2-perf': '性能优化专题：引用消息队列的异步化方案，关注 P99 延迟。',
-  's2-perf-cache': '多级缓存策略：本地缓存 + Redis + CDN，缓存失效和穿透防护。',
-  's2-perf-db': '数据库调优：慢查询分析、读写分离、连接池配置。',
-  // Space 3
-  's3-main': 'BP 大纲协调：串联市场、产品、财务、团队四个章节，保持叙事一致性。',
-  's3-market': '市场分析：行业趋势、目标客群画像、市场规模测算。',
-  's3-market-tam': 'TAM/SAM/SOM 三层市场规模测算，引用行业报告数据。',
-  's3-market-comp': '竞品分析矩阵：功能对比、定价策略、差异化定位。',
-  's3-product': '产品方案：引用市场分析结论定义核心功能和用户价值。',
-  's3-product-mvp': 'MVP 功能范围：核心用户旅程、优先级排序、上线标准。',
-  's3-product-roadmap': '产品路线图：引用 TAM 数据规划阶段性目标和里程碑。',
-  's3-finance': '财务模型：营收预测、成本结构、盈亏平衡分析。',
-  's3-finance-rev': '营收预测模型：引用 TAM 数据，分场景预估 ARR 增长曲线。',
-  's3-finance-cost': '成本结构分析：研发人力、基础设施、获客成本拆解。',
-  's3-team': '团队介绍：核心成员背景、互补能力矩阵、招聘计划。',
+  // Space 2: 留学咨询规划
+  's2-main': '留学规划总览：目标美国 CS 硕士，GPA 3.6/4.0，需在背景提升、选校、文书三条线并行推进，2026 秋季入学。',
+  's2-school': '选校策略：按冲刺/匹配/保底三档分层，综合 US News 排名、科研方向匹配度、地理位置和奖学金政策。',
+  's2-school-reach': '冲刺校清单：CMU SCS、Stanford MSCS、MIT EECS。GPA 偏低需用科研和实习弥补，CMU 最看重项目经历。',
+  's2-school-match': '匹配校清单：UIUC MCS、UMich CSE、GaTech MSCS。录取率 15-30%，性价比最高的一档。',
+  's2-school-safe': '保底校清单：NEU Align、NYU Tandon、USC CS37。录取确定性高，NEU 的 co-op 项目就业导向强。',
+  's2-bg': '背景提升规划：科研发表 > 大厂实习 > 标化刷分，三条线按优先级并行推进。',
+  's2-bg-research': '科研经历规划：联系本校导师进 NLP 实验室，目标产出一篇 workshop paper，暑假申请 CMU REU。',
+  's2-bg-intern': '实习规划：暑假目标字节/腾讯 AI Lab 实习，秋招补一段 startup 经历体现 ownership。',
+  's2-bg-test': '标化考试：GRE 目标 325+，托福目标 105+。冲刺校对 GRE 有隐性门槛，建议 8 月前出分。',
+  's2-doc': '文书准备：PS 主线围绕"从课堂到实践的 AI 认知转变"，CV 突出项目产出和量化成果。',
+  's2-doc-ps': 'PS 主线叙事：大二 NLP 课程启蒙 → 实验室科研深入 → 实习验证方向 → 申请目标聚焦，展现 growth arc。',
+  's2-doc-cv': 'CV 优化策略：引用科研经历节点的产出，每段经历用 STAR 法量化（"提升模型 F1 score 12%"）。',
+  's2-doc-rl': '推荐信策略：学术推荐找实验室导师，工业推荐找实习 mentor，第三封找课程教授（选成绩最好的课）。',
+  's2-timeline': '时间线规划：7-8 月标化出分 → 9-10 月文书定稿 → 11 月 EA/ED → 12-1 月 RD，注意春季和秋季节奏冲突。',
+  's2-timeline-fall': '秋季申请主节奏：12/15 前提交大部分 RD 申请，CMU 的 SCS 有 12/1 早截止需优先。',
+  's2-timeline-spring': '春季备选方案：若秋季全拒，3 月启动春季申请（NEU Spring Admit），或转 gap year 策略。',
+  // Space 3: 金融知识体系构建
+  's3-main': '金融认知框架总览：从宏观经济运行逻辑出发，向下延伸到资本市场结构、投资策略方法论和风险管理工具。',
+  's3-macro': '宏观经济基础：理解 GDP、通胀、利率三大核心指标的联动关系，这是所有金融分析的起点。',
+  's3-macro-policy': '货币政策：央行通过利率、准备金率、公开市场操作调控货币供给，直接影响资产定价和信贷环境。',
+  's3-macro-cycle': '经济周期：复苏→繁荣→衰退→萧条四阶段轮动，不同阶段的最优资产配置策略截然不同。',
+  's3-macro-global': '全球化与汇率：汇率由利差、贸易差额、资本流动共同决定，引用货币政策节点的利率分析。',
+  's3-market': '资本市场结构：股票、债券、衍生品三大板块，理解它们的风险收益特征和相互关联。',
+  's3-market-stock': '股票市场：从基本面（PE/PB/ROE）到技术面（均线/MACD），建立多维度分析框架。',
+  's3-market-bond': '债券市场：收益率曲线是经济风向标，债券与股票的负相关性是资产配置的基石。',
+  's3-market-deriv': '衍生品入门：期权定价（Black-Scholes）、期货套保、互换合约，核心是风险转移而非投机。',
+  's3-invest': '投资策略方法论：价值投资与量化策略代表两种认知范式，资产配置是两者的桥梁。',
+  's3-invest-value': '价值投资：格雷厄姆的安全边际 + 巴菲特的护城河理论，核心是"用 5 毛买 1 块的东西"。',
+  's3-invest-quant': '量化策略：因子模型（Fama-French）、统计套利、高频交易，用数据和算法替代主观判断。',
+  's3-invest-asset': '资产配置：引用经济周期节点，美林时钟框架下的大类资产轮动——衰退买债、复苏买股、过热买商品。',
+  's3-risk': '风险管理：投资不是追求收益最大化，而是风险调整后收益最大化。',
+  's3-risk-measure': '风险度量工具：VaR、夏普比率、最大回撤，量化评估投资组合的风险暴露程度。',
+  's3-risk-hedge': '对冲策略：引用衍生品节点的期权工具，用 protective put 和 collar 策略保护下行风险。',
+  // Space 4: 高二生物·必修三
+  's4-main': '必修三总览：围绕"生命系统的稳态与调节"这一核心主题，涵盖个体水平的三大调节方式和群体水平的生态学。',
+  's4-homeostasis': '稳态与调节：内环境稳态是生命活动的基础，由神经-体液-免疫三大调节网络共同维持。',
+  's4-nerve': '神经调节：兴奋在神经纤维上以电信号传导，在神经元之间以化学信号（突触）传递，速度快、精确。',
+  's4-nerve-reflex': '反射弧：感受器→传入神经→神经中枢→传出神经→效应器，五个环节缺一不可，是神经调节的结构基础。',
+  's4-nerve-synapse': '突触传递：突触前膜释放神经递质→突触间隙→突触后膜受体结合，单向传递是关键考点。',
+  's4-hormone': '体液调节：激素通过血液运输作用于靶器官，与神经调节互为补充——神经调节快而精确，体液调节慢而持久。',
+  's4-hormone-feedback': '反馈调节：下丘脑-垂体-甲状腺轴是经典的负反馈模型，血液中甲状腺激素浓度升高会抑制 TSH 分泌。',
+  's4-hormone-blood': '血糖调节：胰岛素（降血糖）和胰高血糖素（升血糖）拮抗调节，糖尿病的本质是这个平衡被打破。',
+  's4-immune': '免疫调节：非特异性免疫是第一二道防线，特异性免疫（细胞免疫+体液免疫）是第三道防线。',
+  's4-immune-innate': '非特异性免疫：皮肤黏膜（第一道）+ 吞噬细胞和体液杀菌物质（第二道），先天具有、不针对特定病原体。',
+  's4-immune-adaptive': '特异性免疫：T 细胞主导细胞免疫（靶细胞裂解），B 细胞主导体液免疫（抗体分泌），产生记忆细胞是免疫接种的原理。',
+  's4-ecosystem': '生态系统：由生物群落和无机环境构成，核心功能是能量流动、物质循环和信息传递。',
+  's4-eco-struct': '生态系统结构：生产者→消费者→分解者构成营养结构，食物链和食物网是能量流动的渠道。',
+  's4-eco-energy': '能量流动：沿食物链单向流动、逐级递减，每个营养级的同化量约 10-20% 传递给下一级。',
+  's4-eco-matter': '物质循环：碳循环和氮循环是重点，物质在生物群落与无机环境间循环往复，与能量流动同时进行。',
+  's4-eco-info': '信息传递：物理信息、化学信息、行为信息，引用神经调节节点理解生态系统中信息传递的生物学基础。',
+  's4-population': '种群与群落：种群是物种的生存单位，群落是种群的组合，从个体到群落是生态学的基本层次递进。',
+  's4-pop-growth': '种群增长模型：J 型增长（理想条件）vs S 型增长（环境阻力），K 值（环境容纳量）是核心概念。',
+  's4-pop-community': '群落演替：初生演替（裸岩→森林）和次生演替（弃耕农田→森林），人类活动可以改变演替方向和速度。',
+  's4-pop-relation': '种间关系：竞争、捕食、互利共生、寄生四种类型，竞争排斥原理与种群增长模型存在理论张力。',
 }
 
 /** Mock L3 对话记录 */
@@ -383,103 +467,82 @@ const mockMessages: Record<string, TurnRecord[]> = {
     { role: 'user', content: '怎么衡量成功？', timestamp: '2026-04-09T15:34:00Z' },
     { role: 'assistant', content: '核心指标四个：1) DAU > 500——日活说明产品有黏性；2) 日均 Space 创建 > 50——说明用户在用来做真实事情；3) 平均节点深度 > 3——说明用户在深入思考而非浅尝辄止；4) 7 日留存 > 40%——说明价值被认可。这些数据 4 周内就能看到趋势。', timestamp: '2026-04-09T15:35:00Z' },
   ],
-  // ── Space 2: 技术架构评审 ──
+  // ── Space 2: 留学咨询规划 ──
   's2-main': [
-    { role: 'user', content: '现有单体服务已经扛不住了，需要做微服务化改造', timestamp: '2026-04-07T14:00:00Z' },
-    { role: 'assistant', content: '微服务化改造建议分三步走：1) 先梳理领域边界，确定服务拆分粒度；2) 搭建基础设施（网关、注册中心、CI/CD）；3) 逐个服务剥离，从耦合度最低的开始。同时需要关注性能，异步化是关键。', timestamp: '2026-04-07T14:01:00Z' },
-    { role: 'user', content: '目前最大的痛点是数据库单点和部署效率', timestamp: '2026-04-07T14:02:00Z' },
-    { role: 'assistant', content: '数据库单点可以通过读写分离 + 分库先缓解。部署效率靠容器化 + CI/CD 自动化。建议开三条并行探索线：微服务拆分策略、基础设施升级、性能优化专题。', timestamp: '2026-04-07T14:03:00Z' },
+    { role: 'user', content: '我想申请美国 CS 硕士，本科 985 计算机，GPA 3.6，有两段实习，帮我规划一下', timestamp: '2026-04-05T09:00:00Z' },
+    { role: 'assistant', content: '背景不错！985 CS + 3.6 GPA 在美硕申请中属于中上水平。两段实习是加分项，关键要看项目含金量。你的标化成绩怎么样？GRE 和托福考了吗？', timestamp: '2026-04-05T09:01:00Z' },
+    { role: 'user', content: '托福 100，GRE 还没考，打算暑假考。另外我有一段 NLP 方向的本科毕设经历，但没发论文', timestamp: '2026-04-05T09:02:00Z' },
+    { role: 'assistant', content: '托福 100 够用但不突出，冲刺校建议刷到 105+。GRE 目标 325+，8 月前出分比较稳妥。NLP 毕设虽然没发论文，但如果有代码产出和量化结果，CV 上也能写得很漂亮。\n\n整体来看你的背景适合"冲 Top 20 + 稳 Top 30-50"的策略。建议我们从四条线并行展开：选校策略、背景提升、文书准备、时间线规划。', timestamp: '2026-04-05T09:03:00Z' },
+    { role: 'user', content: '好的，那选校方面我比较纠结，CMU 和 Stanford 我有机会吗？', timestamp: '2026-04-05T09:04:00Z' },
+    { role: 'assistant', content: '坦率说，CMU SCS 和 Stanford MSCS 录取率都在 5% 以下，你的 GPA 3.6 偏低（他们平均 3.8+）。但也不是没机会——CMU 非常看重项目经历，如果暑假能进 CMU REU 或拿到一篇顶会 workshop paper，竞争力会大幅提升。Stanford 更看重"故事性"，PS 要写出独特视角。\n\n建议把它们放在冲刺档，同时认真选好匹配校。我开一个「选校策略」节点来详细分析三档学校。', timestamp: '2026-04-05T09:05:00Z' },
+    { role: 'user', content: '除了选校，我的背景还有什么需要补的？感觉科研经历太薄了', timestamp: '2026-04-05T09:06:00Z' },
+    { role: 'assistant', content: '你敏锐地抓到了短板。CS 硕士申请中，科研经历的权重仅次于 GPA。建议三步走：\n\n1. 立刻联系本校导师看能不能进实验室，哪怕做 RA 刷一段经历\n2. 暑假申请海外 REU 或顶校的暑研项目\n3. 实习方面再补一段大厂 AI 相关的，字节和腾讯 AI Lab 都可以\n\n标化、科研、实习三线并行压力大，但时间还够。我开「背景提升」和「文书准备」两个节点来分别细化。', timestamp: '2026-04-05T09:07:00Z' },
   ],
-  's2-micro': [
-    { role: 'user', content: '服务怎么拆？按业务域还是按功能？', timestamp: '2026-04-07T14:10:00Z' },
-    { role: 'assistant', content: '按业务域（DDD bounded context）拆分更合理：每个服务对应一个领域上下文，数据自治，通过事件驱动通信。避免按功能层（前端/后端/数据）横切，那样服务间调用会爆炸。', timestamp: '2026-04-07T14:11:00Z' },
-    { role: 'user', content: '服务间通信用 gRPC 还是 HTTP？', timestamp: '2026-04-07T14:12:00Z' },
-    { role: 'assistant', content: '内部同步调用用 gRPC（高性能、强类型、支持流），对外网关暴露 HTTP/JSON。异步通信一律走消息队列。这样既保证内部效率，又不影响外部兼容性。', timestamp: '2026-04-07T14:13:00Z' },
+  's2-school': [
+    { role: 'user', content: '详细说说选校怎么分层？', timestamp: '2026-04-05T10:00:00Z' },
+    { role: 'assistant', content: '按冲刺/匹配/保底三档，综合排名、方向匹配度、地理和奖学金来分。你的 GPA 3.6 在 Top 10 偏低，Top 20-40 竞争力较强。具体我开三个子节点来逐档分析。', timestamp: '2026-04-05T10:01:00Z' },
   ],
-  's2-micro-gw': [
-    { role: 'user', content: '网关需要哪些核心能力？', timestamp: '2026-04-07T14:20:00Z' },
-    { role: 'assistant', content: '核心能力清单：1) 路由转发——按路径/Header 分发到后端服务；2) 限流熔断——保护后端不被打垮；3) 鉴权——统一验证 JWT；4) 灰度路由——按用户/比例分流到新版本；5) 协议转换——外部 HTTP 转内部 gRPC。推荐 Kong 或 APISIX。', timestamp: '2026-04-07T14:21:00Z' },
+  's2-bg': [
+    { role: 'user', content: '背景提升的优先级怎么排？', timestamp: '2026-04-05T11:00:00Z' },
+    { role: 'assistant', content: '对你的情况来说：科研 > 实习 > 标化刷分。科研是最大短板也是最大杠杆，一篇 workshop paper 比 GRE 多 5 分有用得多。三条线我分别开子节点展开。', timestamp: '2026-04-05T11:01:00Z' },
   ],
-  's2-micro-mq': [
-    { role: 'user', content: 'Kafka 和 RabbitMQ 选哪个？', timestamp: '2026-04-07T14:30:00Z' },
-    { role: 'assistant', content: '看场景：Kafka 适合高吞吐、日志流、事件溯源（我们的主场景）；RabbitMQ 适合低延迟、复杂路由、任务队列。建议核心事件流用 Kafka，轻量任务分发用 RabbitMQ，不冲突。', timestamp: '2026-04-07T14:31:00Z' },
+  's2-doc': [
+    { role: 'user', content: '文书什么时候开始准备？有什么注意事项？', timestamp: '2026-04-05T12:00:00Z' },
+    { role: 'assistant', content: '9 月开始写初稿，10 月迭代定稿。最重要的是 PS 的叙事主线——不要写成简历复述，要讲一个"从 A 到 B 的认知转变故事"，引用你科研和实习的经历串联起来。', timestamp: '2026-04-05T12:01:00Z' },
   ],
-  's2-micro-svc': [
-    { role: 'user', content: '服务注册发现用什么方案？', timestamp: '2026-04-07T14:40:00Z' },
-    { role: 'assistant', content: '推荐 Consul：1) 支持健康检查——主动探测服务存活，自动摘除故障实例；2) KV 存储——可以存网关路由配置，和网关联动；3) 多数据中心——方便后续扩展。备选 Nacos（如果团队偏 Java 生态）。关键是服务启动时自动注册，关闭时优雅下线。', timestamp: '2026-04-07T14:41:00Z' },
+  's2-timeline': [
+    { role: 'user', content: '整体时间线怎么安排？怕赶不上', timestamp: '2026-04-05T13:00:00Z' },
+    { role: 'assistant', content: '来得及但需要紧凑执行。注意秋季申请和春季备选的节奏差异——我开两个子节点对比两种路径。', timestamp: '2026-04-05T13:01:00Z' },
   ],
-  's2-infra': [
-    { role: 'user', content: '基础设施整体怎么规划？', timestamp: '2026-04-07T14:50:00Z' },
-    { role: 'assistant', content: '三大支柱：1) 容器化部署——K8s 统管所有服务的生命周期；2) 可观测性——日志（ELK）+ 指标（Prometheus）+ 链路追踪（Jaeger）三件套；3) CI/CD 自动化——代码提交到部署全流程 < 15 分钟。优先搞 K8s 和 CI/CD，可观测性可以渐进式搭建。', timestamp: '2026-04-07T14:51:00Z' },
-  ],
-  's2-infra-k8s': [
-    { role: 'user', content: 'K8s 集群怎么规划节点？', timestamp: '2026-04-07T15:00:00Z' },
-    { role: 'assistant', content: '建议三层节点池：1) 系统节点池（3 节点）——运行 ingress、监控、日志；2) 应用节点池（可伸缩）——运行业务服务，配 HPA 自动扩缩；3) 计算节点池（按需）——跑批处理和 AI 推理任务。存储用 CSI 接云盘。', timestamp: '2026-04-07T15:01:00Z' },
-  ],
-  's2-infra-ci': [
-    { role: 'user', content: 'CI/CD 流水线怎么设计？', timestamp: '2026-04-07T15:10:00Z' },
-    { role: 'assistant', content: '四阶段流水线：1) Build——每个微服务独立构建 Docker 镜像，引用拆分后的构建单元；2) Test——单元测试 + 集成测试（引用服务间契约）；3) Stage——自动部署到 staging 环境，跑 E2E 测试；4) Deploy——灰度发布到生产，配合网关做流量切换。工具链推荐 GitHub Actions + ArgoCD。', timestamp: '2026-04-07T15:11:00Z' },
-  ],
-  's2-perf': [
-    { role: 'user', content: '性能优化从哪里入手？', timestamp: '2026-04-07T15:20:00Z' },
-    { role: 'assistant', content: '三个方向：1) 缓存——多级缓存减少 DB 压力，这是见效最快的；2) 异步化——引用消息队列方案，把非关键路径异步处理；3) DB 调优——慢查询分析、索引优化、连接池调参。建议先做缓存，立竿见影。目标把 P99 延迟从 2s 降到 200ms。', timestamp: '2026-04-07T15:21:00Z' },
-  ],
-  's2-perf-cache': [
-    { role: 'user', content: '缓存穿透怎么防？', timestamp: '2026-04-07T15:30:00Z' },
-    { role: 'assistant', content: '三板斧：1) 布隆过滤器——请求到达前先判断 key 是否可能存在；2) 空值缓存——查不到也缓存一个短 TTL 的空值；3) 热点 key 发现——监控 QPS 最高的 key，主动预热。另外缓存雪崩用随机 TTL + 互斥锁防范。', timestamp: '2026-04-07T15:31:00Z' },
-  ],
-  's2-perf-db': [
-    { role: 'user', content: 'DB 调优具体怎么做？', timestamp: '2026-04-07T15:40:00Z' },
-    { role: 'assistant', content: '四步走：1) 开慢查询日志——找出 > 100ms 的 SQL，逐条优化索引；2) 读写分离——主库写、从库读，配合缓存减轻主库压力；3) 连接池调参——根据服务数和并发量设置合理的 pool size；4) 分库分表——热点表按业务维度水平拆分。工具推荐 pt-query-digest 分析慢查询。', timestamp: '2026-04-07T15:41:00Z' },
-  ],
-  // ── Space 3: 创业 BP 撰写 ──
+  // ── Space 3: 金融知识体系构建 ──
   's3-main': [
-    { role: 'user', content: '我要写一份 BP，面向天使轮投资人，产品方向是 AI 协作工具', timestamp: '2026-04-06T10:00:00Z' },
-    { role: 'assistant', content: 'BP 结构建议：1) 市场分析——证明赛道够大；2) 产品方案——说清楚解决什么问题、怎么解决；3) 财务模型——营收预测和成本结构；4) 团队介绍——为什么是你们。天使轮重点讲团队和产品愿景，财务模型简洁即可。', timestamp: '2026-04-06T10:01:00Z' },
-    { role: 'user', content: '好，按这四个方向分别展开', timestamp: '2026-04-06T10:02:00Z' },
-    { role: 'assistant', content: '已开四条探索线。注意它们之间有依赖：市场分析的 TAM 数据会被产品路线图和营收预测引用，产品方案又依赖市场分析的用户画像。建议先把市场分析做扎实。', timestamp: '2026-04-06T10:03:00Z' },
+    { role: 'user', content: '我是计算机背景，最近对投资理财很感兴趣，但感觉金融知识太碎片化了，想系统学一下', timestamp: '2026-04-04T09:00:00Z' },
+    { role: 'assistant', content: '计算机背景学金融其实有天然优势——你有数学基础和编程能力，量化分析这块上手会很快。不过金融知识确实是一张庞大的网，如果一上来就看 K 线图或者研究个股，很容易迷失。\n\n建议自顶向下搭框架：先理解宏观经济怎么运转，再看资本市场结构，然后学投资策略，最后了解风险管理。你主要是想自己投资，还是想往量化方向发展？', timestamp: '2026-04-04T09:01:00Z' },
+    { role: 'user', content: '主要是想自己投资，不过量化策略我也很好奇，毕竟会写代码', timestamp: '2026-04-04T09:02:00Z' },
+    { role: 'assistant', content: '那太合适了！你可以两条腿走路：传统的价值投资帮你建立商业分析的直觉，量化策略让你用数据验证和执行投资决策。两者其实不矛盾，很多顶级基金（桥水、文艺复兴）都是融合的。\n\n不过在跳进策略之前，得先打好基础。你了解 GDP、通胀、利率这些宏观指标吗？比如美联储加息对股市意味着什么？', timestamp: '2026-04-04T09:03:00Z' },
+    { role: 'user', content: '大概知道加息股市跌，降息股市涨？但为什么我不太清楚', timestamp: '2026-04-04T09:04:00Z' },
+    { role: 'assistant', content: '这个直觉基本对但不完全准确。核心逻辑是：利率影响"钱的成本"。加息 → 借钱更贵 → 企业融资成本上升 → 未来盈利折现值降低 → 股价承压。但实际更复杂——如果加息是因为经济过热，企业盈利本身在增长，股市未必跌。\n\n这就是为什么要先学宏观经济再看市场——不理解因果关系，只记结论容易被"这次不一样"打脸。建议我们开四条探索线：宏观经济基础、资本市场结构、投资策略方法论、风险管理。', timestamp: '2026-04-04T09:05:00Z' },
+    { role: 'user', content: '行，那就按这个框架来。对了，我之前买过几只基金亏了不少，也想搞清楚到底哪里出了问题', timestamp: '2026-04-04T09:06:00Z' },
+    { role: 'assistant', content: '亏钱是最好的学费，前提是你能从中提取教训。大部分散户亏钱的原因就那几个：追涨杀跌（情绪驱动）、不分散（all in 单一赛道）、忽视风险管理（只想收益不想亏损）。\n\n等我们学到「投资策略」和「风险管理」的时候，你可以把当时的买卖记录拿出来复盘，用学到的框架分析到底是策略问题还是执行问题。现在先从宏观经济开始打地基。', timestamp: '2026-04-04T09:07:00Z' },
+  ],
+  's3-macro': [
+    { role: 'user', content: '宏观经济最核心的几个概念是什么？', timestamp: '2026-04-04T10:00:00Z' },
+    { role: 'assistant', content: 'GDP、通胀率、利率——这三个是"宏观三角"，理解它们的联动关系就等于掌握了经济运行的底层逻辑。后面的货币政策、经济周期、汇率都是从这三个衍生出来的。', timestamp: '2026-04-04T10:01:00Z' },
   ],
   's3-market': [
-    { role: 'user', content: 'AI 协作工具的市场现状怎么样？', timestamp: '2026-04-06T10:10:00Z' },
-    { role: 'assistant', content: '2025 年全球 AI 协作工具市场约 120 亿美元，CAGR 35%。头部玩家 Notion AI、Cursor、Claude Code 聚焦单一场景，但"多线程思维协作"这个细分方向还是蓝海。关键趋势：从 copilot 到 co-thinker 的范式转移。', timestamp: '2026-04-06T10:11:00Z' },
-    { role: 'user', content: '目标客群是谁？', timestamp: '2026-04-06T10:12:00Z' },
-    { role: 'assistant', content: '三层客群：1) 核心——独立开发者和小团队 CTO，需要 AI 辅助架构决策；2) 扩展——产品经理和设计师，需要结构化的需求探索；3) 远期——知识工作者（咨询、研究、写作），需要深度思考辅助。天使轮聚焦第一层。', timestamp: '2026-04-06T10:13:00Z' },
+    { role: 'user', content: '宏观打完底子了，资本市场怎么学？', timestamp: '2026-04-04T14:00:00Z' },
+    { role: 'assistant', content: '资本市场就三大块：股票、债券、衍生品。它们的风险收益特征不同，相互关联。理解这三块就知道"钱都流向哪里、为什么"。我分三个子节点展开。', timestamp: '2026-04-04T14:01:00Z' },
   ],
-  's3-market-tam': [
-    { role: 'user', content: '帮我算下 TAM/SAM/SOM', timestamp: '2026-04-06T10:20:00Z' },
-    { role: 'assistant', content: 'TAM：全球 AI 生产力工具市场 ~$120B（2025）。SAM：其中协作/思维辅助工具 ~$8B。SOM：第一年聚焦开发者群体，全球约 3000 万独立开发者 × $10/月 × 0.5% 渗透率 = ~$18M ARR 目标。保守但可信。', timestamp: '2026-04-06T10:21:00Z' },
+  's3-invest': [
+    { role: 'user', content: '投资策略有哪些流派？', timestamp: '2026-04-05T09:00:00Z' },
+    { role: 'assistant', content: '简化来看就两大范式：价值投资（靠判断力）和量化策略（靠算法）。资产配置是连接两者的桥梁。你有编程背景，两边都可以学。', timestamp: '2026-04-05T09:01:00Z' },
   ],
-  's3-market-comp': [
-    { role: 'user', content: '主要竞品有哪些？我们怎么差异化？', timestamp: '2026-04-06T10:30:00Z' },
-    { role: 'assistant', content: '竞品矩阵：Notion AI（文档+AI，但线性思维）、Miro AI（画布+AI，但缺乏深度对话）、ChatGPT（深度对话，但无结构化）。我们的差异化：唯一同时提供"思维拓扑 + 多线程 AI 对话 + 跨节点意识"的产品。核心壁垒是 session tree 的架构和 L1/L2/L3 记忆模型。', timestamp: '2026-04-06T10:31:00Z' },
+  's3-risk': [
+    { role: 'user', content: '风险管理听起来很枯燥，真的有必要学吗？', timestamp: '2026-04-05T14:00:00Z' },
+    { role: 'assistant', content: '投资圈有句话："收益是运气，风控才是能力。" 你之前买基金亏钱，很可能不是选错了标的，而是没有风险管理意识——比如没设止损、没有做分散、仓位过重。这块必须认真学。', timestamp: '2026-04-05T14:01:00Z' },
   ],
-  's3-product': [
-    { role: 'user', content: '产品方案整体怎么写？', timestamp: '2026-04-06T10:40:00Z' },
-    { role: 'assistant', content: '产品方案章节结构：1) 痛点描述——引用市场分析的用户画像，说明现有工具的不足；2) 解决方案——MindKit 的核心创新（session tree + 多层记忆）；3) MVP 定义——最小可行产品范围；4) 产品路线图——6/12/18 个月的里程碑。重点让投资人理解"为什么这个方案能赢"。', timestamp: '2026-04-06T10:41:00Z' },
+  // ── Space 4: 高二生物·必修三 ──
+  's4-main': [
+    { role: 'user', content: '下周期中考试考必修三，内容太多了根本记不住，帮我梳理一下重点', timestamp: '2026-04-03T19:00:00Z' },
+    { role: 'assistant', content: '别慌，必修三虽然内容多，但核心就一个主题——"生命系统怎么保持稳定"。整本书围绕这个展开，理解了这条主线，零散的知识点就能串起来。\n\n你觉得哪部分最头疼？是神经调节那块还是生态系统？', timestamp: '2026-04-03T19:01:00Z' },
+    { role: 'user', content: '神经调节和体液调节老搞混，还有免疫那块也记不清。生态系统相对好一些', timestamp: '2026-04-03T19:02:00Z' },
+    { role: 'assistant', content: '搞混是正常的，因为神经调节和体液调节本来就是协同工作的！教材把它们分开讲反而容易让人觉得是两个独立的东西。\n\n一个快速记忆口诀：**神经管"快"、体液管"久"、免疫管"防"**。比如手碰到热水缩回来（神经，毫秒级），甲状腺激素调节代谢（体液，小时级），打疫苗产生抗体（免疫，天级）。它们三个合在一起维持内环境稳态。\n\n我建议分三大板块来梳理：稳态与调节（神经+体液+免疫）、生态系统、种群与群落。', timestamp: '2026-04-03T19:03:00Z' },
+    { role: 'user', content: '好，先从最头疼的稳态与调节开始吧。反射弧那块我知道五个部分，但总是搞不清兴奋怎么传导的', timestamp: '2026-04-03T19:04:00Z' },
+    { role: 'assistant', content: '反射弧五部分你记住了就好：感受器→传入神经→神经中枢→传出神经→效应器。兴奋传导其实就两种方式：\n\n1. **神经纤维上**：电信号，像多米诺骨牌一样沿着神经传，速度超快，双向传导\n2. **突触处**：化学信号，前膜释放神经递质→穿过突触间隙→后膜接收，只能单向\n\n考试最爱考的就是突触那块——"为什么突触传递是单向的？"因为只有突触前膜能释放神经递质，突触后膜上才有受体。记住这个逻辑比死背结论有用。\n\n我开「神经调节」子节点把这块细化，然后体液和免疫也各开一条线。', timestamp: '2026-04-03T19:05:00Z' },
+    { role: 'user', content: '生态系统那块感觉知识点不难但很杂，能量流动、物质循环、信息传递，总感觉分不清', timestamp: '2026-04-03T19:06:00Z' },
+    { role: 'assistant', content: '其实它们三个是同一件事的三个面！想象一个森林生态系统：\n\n- **能量流动**：太阳能→草→兔→狐，单向流动、逐级递减（每级只传 10-20%）\n- **物质循环**：碳从 CO₂→草（光合）→兔（吃）→微生物（分解）→CO₂，循环往复\n- **信息传递**：花的颜色吸引蜜蜂（物理信息）、狼的尿液标记领地（化学信息）\n\n能量是"流"的（不循环），物质是"转"的（循环），信息是"传"的（调节前两者）。考试常考"比较能量流动和物质循环的异同"，抓住"单向vs循环"这个核心就不会错。\n\n我也开「生态系统」和「种群与群落」两个节点来分别梳理。', timestamp: '2026-04-03T19:07:00Z' },
   ],
-  's3-product-mvp': [
-    { role: 'user', content: 'MVP 应该包含哪些功能？', timestamp: '2026-04-06T11:00:00Z' },
-    { role: 'assistant', content: 'MVP 三个核心功能：1) Space 创建和管理——用户能创建多个思维空间；2) 对话拓扑——可视化 session tree，支持分叉和节点切换；3) AI 多线程对话——每个节点独立对话，AI 有跨节点感知。砍掉：协作、Market、离线模式。目标：2 周开发，验证"拓扑思维"的核心假设。', timestamp: '2026-04-06T11:01:00Z' },
+  's4-homeostasis': [
+    { role: 'user', content: '稳态与调节这块还有什么常考的？', timestamp: '2026-04-03T20:00:00Z' },
+    { role: 'assistant', content: '血糖调节和反馈调节是大题常客。神经、体液、免疫三种调节的比较也经常出选择题。我分三个子节点来逐个击破。', timestamp: '2026-04-03T20:01:00Z' },
   ],
-  's3-product-roadmap': [
-    { role: 'user', content: '产品路线图怎么规划？', timestamp: '2026-04-06T11:10:00Z' },
-    { role: 'assistant', content: '基于 TAM 数据的三阶段路线图：Phase 1（0-6 月）——MVP 上线 + 种子用户验证，目标 500 活跃用户；Phase 2（6-12 月）——Market 生态 + 团队协作，目标 5000 付费用户；Phase 3（12-18 月）——企业版 + API 开放平台，目标进入 ARR $3M。每阶段都有明确的 Go/No-Go 指标。', timestamp: '2026-04-06T11:11:00Z' },
+  's4-ecosystem': [
+    { role: 'user', content: '生态系统这块重点是啥？', timestamp: '2026-04-04T19:00:00Z' },
+    { role: 'assistant', content: '能量流动的计算题是必考的——给你营养级的同化量让你算传递效率。物质循环重点是碳循环的图。信息传递相对简单但别忽略。', timestamp: '2026-04-04T19:01:00Z' },
   ],
-  's3-finance': [
-    { role: 'user', content: '财务模型怎么搭？', timestamp: '2026-04-06T11:20:00Z' },
-    { role: 'assistant', content: '天使轮 BP 的财务模型不需要太复杂，但要有：1) 营收预测——基于 TAM/渗透率自上而下 + 基于获客漏斗自下而上双重验证；2) 成本结构——研发人力、LLM API 调用、基础设施三大块；3) 盈亏平衡——预计 Y2 Q3 达到月度盈亏平衡。关键是假设透明、逻辑自洽。', timestamp: '2026-04-06T11:21:00Z' },
-  ],
-  's3-finance-rev': [
-    { role: 'user', content: '营收模型怎么算？', timestamp: '2026-04-06T11:30:00Z' },
-    { role: 'assistant', content: '基于 TAM 节点的数据，三年预测：Y1 — 免费增值获客 5000 付费用户 × $10/月 = $600K ARR；Y2 — 增加团队版 $30/月，目标 2 万用户 = $3.6M ARR；Y3 — 企业版 + Market 分成，目标 $12M ARR。毛利率预估 75%（主要成本是 LLM API 调用）。', timestamp: '2026-04-06T11:31:00Z' },
-  ],
-  's3-finance-cost': [
-    { role: 'user', content: '成本结构怎么拆？', timestamp: '2026-04-06T11:40:00Z' },
-    { role: 'assistant', content: 'Y1 成本拆解：1) 研发人力 ~$400K（4 人全栈团队）；2) LLM API ~$120K（按 5000 用户 × 日均 20 次调用估算）；3) 基础设施 ~$36K（云服务器 + 向量库）；4) 运营/市场 ~$60K。总计 ~$616K，天使轮融 $800K 可以覆盖 12-15 个月的 runway。', timestamp: '2026-04-06T11:41:00Z' },
-  ],
-  's3-team': [
-    { role: 'user', content: '团队介绍怎么写比较有说服力？', timestamp: '2026-04-06T12:00:00Z' },
-    { role: 'assistant', content: '天使轮团队介绍重点：1) 互补能力矩阵——技术 + 产品 + 增长至少覆盖两项；2) 相关经验——之前做过类似产品或在相关领域有深度积累；3) 全职承诺——投资人最怕兼职创业。格式建议：每人一张照片 + 一句话 title + 3 个 bullet point 的核心经历。如果有知名公司背景或开源项目，一定要突出。', timestamp: '2026-04-06T12:01:00Z' },
+  's4-population': [
+    { role: 'user', content: '种群和群落这块呢？', timestamp: '2026-04-05T19:00:00Z' },
+    { role: 'assistant', content: 'J 型和 S 型增长曲线的对比是重点，K/2 是最大增长速率点。群落演替考大题概率高——初生演替和次生演替的区别要能举例说明。', timestamp: '2026-04-05T19:01:00Z' },
   ],
 }
 
@@ -1201,11 +1264,16 @@ export function addSp1Product(productIndex: number) {
 const mockProducts: Record<string, Product[]> = {
   'sp-1': [],  // 演示时动态添加
   'sp-2': [
-    { id: 'prod-3', type: '架构评审报告', title: '微服务化改造评审报告', summary: '从单体到微服务的改造方案，涵盖服务拆分、基础设施、性能优化三大方向', sourceNodeIds: ['s2-main', 's2-micro', 's2-infra'], content: '# 架构评审报告\n\n## 现状分析\n单体架构瓶颈...\n\n## 改造方案\n按 DDD 边界拆分...', createdAt: '2026-04-07T16:00:00Z', updatedAt: '2026-04-09T09:00:00Z' },
+    { id: 'prod-3', type: '选校清单', title: '美国 CS 硕士选校清单', summary: '冲刺/匹配/保底三档共 9 所学校，含录取率、截止日期和匹配度分析', sourceNodeIds: ['s2-school', 's2-school-reach', 's2-school-match', 's2-school-safe'], content: '# 选校清单\n\n## 冲刺校\nCMU SCS / Stanford MSCS / MIT EECS\n\n## 匹配校\nUIUC MCS / UMich CSE / GaTech MSCS\n\n## 保底校\nNEU Align / NYU Tandon / USC CS37', createdAt: '2026-04-05T16:00:00Z', updatedAt: '2026-04-09T10:00:00Z' },
+    { id: 'prod-3b', type: '时间线规划', title: '2026 秋季申请时间线', summary: '7 月-次年 4 月完整申请节奏，标化/文书/提交三线并行', sourceNodeIds: ['s2-timeline', 's2-timeline-fall', 's2-bg-test'], content: '# 申请时间线\n\n7-8月 标化出分\n9-10月 文书定稿\n11月 EA提交\n12-1月 RD批量提交\n2-4月 面试+择校', createdAt: '2026-04-06T12:00:00Z', updatedAt: '2026-04-09T11:00:00Z' },
   ],
   'sp-3': [
-    { id: 'prod-4', type: '商业计划书', title: 'MindKit 商业计划书', summary: 'AI 协作工具赛道，TAM $120B，天使轮融资 $800K，Y2 盈亏平衡', sourceNodeIds: ['s3-main', 's3-market', 's3-finance'], content: '# MindKit BP\n\n## 市场机会\nTAM $120B\n\n## 产品方案\n多线程思维协作\n\n## 财务预测\nY1 ARR $600K', createdAt: '2026-04-06T14:00:00Z', updatedAt: '2026-04-08T16:00:00Z' },
-    { id: 'prod-5', type: '财务模型', title: '三年财务预测模型', summary: 'Y1-Y3 营收预测、成本结构、盈亏平衡分析', sourceNodeIds: ['s3-finance', 's3-finance-rev', 's3-finance-cost'], content: '# 财务模型\n\n## Y1\nARR $600K\n\n## Y2\nARR $3.6M\n\n## Y3\nARR $12M', createdAt: '2026-04-08T12:00:00Z', updatedAt: '2026-04-08T17:00:00Z' },
+    { id: 'prod-4', type: '知识图谱', title: '金融知识体系导图', summary: '从宏观经济到风险管理的四层知识架构，含核心概念和关联关系', sourceNodeIds: ['s3-main', 's3-macro', 's3-market', 's3-invest', 's3-risk'], content: '# 金融知识体系\n\n## L1 宏观经济\nGDP / 通胀 / 利率\n\n## L2 资本市场\n股票 / 债券 / 衍生品\n\n## L3 投资策略\n价值投资 / 量化策略 / 资产配置\n\n## L4 风险管理\nVaR / 夏普比率 / 对冲', createdAt: '2026-04-04T16:00:00Z', updatedAt: '2026-04-09T09:00:00Z' },
+    { id: 'prod-5', type: '投资框架', title: '个人投资决策框架', summary: '基于经济周期的资产配置策略 + 风险控制规则', sourceNodeIds: ['s3-invest-asset', 's3-macro-cycle', 's3-risk-measure'], content: '# 投资框架\n\n## 美林时钟\n衰退买债 / 复苏买股 / 过热买商品 / 滞胀持现金\n\n## 风控规则\n单仓 <15% / 止损 -8% / 夏普 >1.5', createdAt: '2026-04-05T16:00:00Z', updatedAt: '2026-04-09T09:30:00Z' },
+  ],
+  'sp-4': [
+    { id: 'prod-6', type: '知识梳理', title: '必修三核心知识点速查', summary: '三大调节+生态系统+种群群落，覆盖期中考试全部重点', sourceNodeIds: ['s4-homeostasis', 's4-ecosystem', 's4-population'], content: '# 必修三速查\n\n## 稳态与调节\n神经调节：反射弧→突触传递\n体液调节：负反馈→血糖调节\n免疫调节：非特异性+特异性\n\n## 生态系统\n能量流动（单向递减10-20%）\n物质循环（碳循环）\n\n## 种群与群落\nJ型/S型增长 K值', createdAt: '2026-04-03T22:00:00Z', updatedAt: '2026-04-09T08:00:00Z' },
+    { id: 'prod-7', type: '易错点总结', title: '必修三高频易错题归纳', summary: '突触传递方向性、反馈调节判断、能量传递效率计算等 12 个易错点', sourceNodeIds: ['s4-nerve-synapse', 's4-hormone-feedback', 's4-eco-energy'], content: '# 易错点\n\n1. 突触传递是单向的（前膜→后膜）\n2. 负反馈≠负调节\n3. 同化量≠摄入量\n4. K/2时增长速率最大\n5. 初生演替从裸岩开始', createdAt: '2026-04-05T20:00:00Z', updatedAt: '2026-04-09T08:00:00Z' },
   ],
 }
 
@@ -1240,20 +1308,38 @@ const mockEvents: Record<string, SpaceEvent[]> = {
     { id: 'evt-20a', type: 'insight_generated', description: '全局洞察：增长飞轮的模板分享机制可反哺开源社区生态', nodeId: 's1-main', relatedNodeIds: ['s1-growth', 's1-oss'], timestamp: '2026-04-09T16:40:00Z' },
   ],
   'sp-2': [
-    { id: 'evt-20', type: 'node_created', description: '创建架构总览节点', nodeId: 's2-main', timestamp: '2026-04-07T14:00:00Z' },
-    { id: 'evt-21', type: 'node_created', description: '话题分裂：微服务拆分策略', nodeId: 's2-micro', timestamp: '2026-04-07T14:10:00Z' },
-    { id: 'evt-22', type: 'node_created', description: '话题分裂：基础设施规划', nodeId: 's2-infra', timestamp: '2026-04-07T14:50:00Z' },
-    { id: 'evt-23', type: 'cross_node_link', description: '发现关联：CI/CD 需引用微服务拆分的构建单元', nodeId: 's2-infra-ci', relatedNodeIds: ['s2-micro'], timestamp: '2026-04-07T15:12:00Z' },
-    { id: 'evt-24', type: 'insight_generated', description: '全局洞察：性能优化应优先做缓存层，异步化依赖消息队列就绪', nodeId: 's2-main', relatedNodeIds: ['s2-perf', 's2-micro-mq'], timestamp: '2026-04-07T15:25:00Z' },
-    { id: 'evt-25', type: 'product_created', description: '产物生成：微服务化改造评审报告', nodeId: 's2-main', timestamp: '2026-04-07T16:00:00Z' },
+    { id: 'evt-20', type: 'node_created', description: '创建留学规划总览节点', nodeId: 's2-main', timestamp: '2026-04-05T09:00:00Z' },
+    { id: 'evt-21', type: 'node_created', description: '话题分裂：选校策略（冲刺/匹配/保底三档）', nodeId: 's2-school', timestamp: '2026-04-05T10:00:00Z' },
+    { id: 'evt-22', type: 'node_created', description: '话题分裂：背景提升规划', nodeId: 's2-bg', timestamp: '2026-04-05T11:00:00Z' },
+    { id: 'evt-23', type: 'node_created', description: '话题分裂：文书准备', nodeId: 's2-doc', timestamp: '2026-04-05T12:00:00Z' },
+    { id: 'evt-24', type: 'cross_node_link', description: '发现关联：标化考试分数直接影响冲刺校的可行性', nodeId: 's2-bg-test', relatedNodeIds: ['s2-school-reach'], timestamp: '2026-04-05T11:30:00Z' },
+    { id: 'evt-25', type: 'cross_node_link', description: '发现关联：CV 优化需引用科研经历的产出数据', nodeId: 's2-doc-cv', relatedNodeIds: ['s2-bg-research'], timestamp: '2026-04-05T12:30:00Z' },
+    { id: 'evt-26', type: 'insight_generated', description: '全局洞察：秋季申请时间线与标化出分时间存在冲突风险', nodeId: 's2-main', relatedNodeIds: ['s2-timeline-fall', 's2-bg-test'], timestamp: '2026-04-05T13:30:00Z' },
+    { id: 'evt-27', type: 'product_created', description: '产物生成：美国 CS 硕士选校清单', nodeId: 's2-school', timestamp: '2026-04-05T16:00:00Z' },
+    { id: 'evt-28', type: 'product_created', description: '产物生成：2026 秋季申请时间线', nodeId: 's2-timeline', timestamp: '2026-04-06T12:00:00Z' },
   ],
   'sp-3': [
-    { id: 'evt-30', type: 'node_created', description: '创建 BP 大纲节点', nodeId: 's3-main', timestamp: '2026-04-06T10:00:00Z' },
-    { id: 'evt-31', type: 'node_created', description: '话题分裂：市场分析', nodeId: 's3-market', timestamp: '2026-04-06T10:10:00Z' },
-    { id: 'evt-32', type: 'cross_node_link', description: '发现关联：产品方案引用了市场分析的用户画像结论', nodeId: 's3-product', relatedNodeIds: ['s3-market'], timestamp: '2026-04-06T10:45:00Z' },
-    { id: 'evt-33', type: 'insight_generated', description: '全局洞察：TAM 数据已具备生成营收预测的条件', nodeId: 's3-main', relatedNodeIds: ['s3-market-tam', 's3-finance-rev'], timestamp: '2026-04-06T11:25:00Z' },
-    { id: 'evt-34', type: 'product_created', description: '产物生成：MindKit 商业计划书', nodeId: 's3-main', timestamp: '2026-04-06T14:00:00Z' },
-    { id: 'evt-35', type: 'product_updated', description: '产物更新：BP 补充了财务模型章节', nodeId: 's3-finance', timestamp: '2026-04-08T16:00:00Z' },
+    { id: 'evt-30', type: 'node_created', description: '创建金融认知框架节点', nodeId: 's3-main', timestamp: '2026-04-04T09:00:00Z' },
+    { id: 'evt-31', type: 'node_created', description: '话题分裂：宏观经济基础', nodeId: 's3-macro', timestamp: '2026-04-04T10:00:00Z' },
+    { id: 'evt-32', type: 'node_created', description: '话题分裂：资本市场结构', nodeId: 's3-market', timestamp: '2026-04-04T14:00:00Z' },
+    { id: 'evt-33', type: 'cross_node_link', description: '发现关联：资本市场分析依赖宏观经济的利率和周期框架', nodeId: 's3-market', relatedNodeIds: ['s3-macro'], timestamp: '2026-04-04T14:10:00Z' },
+    { id: 'evt-34', type: 'cross_node_link', description: '发现矛盾：价值投资的"长期持有"与量化策略的"频繁交易"理念冲突', nodeId: 's3-invest-quant', relatedNodeIds: ['s3-invest-value'], timestamp: '2026-04-05T09:30:00Z' },
+    { id: 'evt-35', type: 'insight_generated', description: '全局洞察：资产配置（美林时钟）是连接经济周期和投资策略的桥梁', nodeId: 's3-main', relatedNodeIds: ['s3-macro-cycle', 's3-invest-asset'], timestamp: '2026-04-05T10:00:00Z' },
+    { id: 'evt-36', type: 'cross_node_link', description: '发现关联：对冲策略直接使用衍生品工具', nodeId: 's3-risk-hedge', relatedNodeIds: ['s3-market-deriv'], timestamp: '2026-04-05T14:30:00Z' },
+    { id: 'evt-37', type: 'product_created', description: '产物生成：金融知识体系导图', nodeId: 's3-main', timestamp: '2026-04-04T16:00:00Z' },
+    { id: 'evt-38', type: 'product_created', description: '产物生成：个人投资决策框架', nodeId: 's3-invest', timestamp: '2026-04-05T16:00:00Z' },
+  ],
+  'sp-4': [
+    { id: 'evt-40', type: 'node_created', description: '创建必修三总览节点', nodeId: 's4-main', timestamp: '2026-04-03T19:00:00Z' },
+    { id: 'evt-41', type: 'node_created', description: '话题分裂：稳态与调节（三大调节方式）', nodeId: 's4-homeostasis', timestamp: '2026-04-03T20:00:00Z' },
+    { id: 'evt-42', type: 'node_created', description: '话题分裂：生态系统', nodeId: 's4-ecosystem', timestamp: '2026-04-04T19:00:00Z' },
+    { id: 'evt-43', type: 'node_created', description: '话题分裂：种群与群落', nodeId: 's4-population', timestamp: '2026-04-05T19:00:00Z' },
+    { id: 'evt-44', type: 'cross_node_link', description: '发现关联：体液调节与神经调节协同维持稳态', nodeId: 's4-hormone', relatedNodeIds: ['s4-nerve'], timestamp: '2026-04-03T20:30:00Z' },
+    { id: 'evt-45', type: 'cross_node_link', description: '发现关联：生态系统信息传递的生物学基础来自神经调节', nodeId: 's4-eco-info', relatedNodeIds: ['s4-nerve'], timestamp: '2026-04-04T19:30:00Z' },
+    { id: 'evt-46', type: 'insight_generated', description: '全局洞察：能量流动与物质循环同时进行但特征相反——能量单向、物质循环', nodeId: 's4-main', relatedNodeIds: ['s4-eco-energy', 's4-eco-matter'], timestamp: '2026-04-04T20:00:00Z' },
+    { id: 'evt-47', type: 'insight_generated', description: '全局洞察：竞争排斥原理与 S 型增长的 K 值概念存在理论张力', nodeId: 's4-main', relatedNodeIds: ['s4-pop-relation', 's4-pop-growth'], timestamp: '2026-04-05T19:30:00Z' },
+    { id: 'evt-48', type: 'product_created', description: '产物生成：必修三核心知识点速查', nodeId: 's4-main', timestamp: '2026-04-03T22:00:00Z' },
+    { id: 'evt-49', type: 'product_created', description: '产物生成：必修三高频易错题归纳', nodeId: 's4-main', timestamp: '2026-04-05T20:00:00Z' },
   ],
 }
 
@@ -1275,12 +1361,21 @@ const mockInsights: Record<string, Insight[]> = {
     { id: 'ins-7', content: '「增长飞轮」的模板分享机制可以反哺「开源社区」生态，形成正向循环', sourceNodeIds: ['s1-growth', 's1-oss'], sourceLabels: ['增长飞轮', '开源社区'], timestamp: '2026-04-09T16:40:00Z' },
   ],
   'sp-2': [
-    { id: 'ins-4', content: '性能优化的缓存层设计需要等消息队列选型确定后再展开，因为缓存失效策略依赖事件驱动', sourceNodeIds: ['s2-perf-cache', 's2-micro-mq'], sourceLabels: ['缓存策略', '消息队列'], timestamp: '2026-04-07T15:25:00Z' },
-    { id: 'ins-5', content: 'CI/CD 流水线的构建单元需要跟随微服务拆分粒度，建议同步推进', sourceNodeIds: ['s2-infra-ci', 's2-micro'], sourceLabels: ['CI/CD 流水线', '微服务拆分'], timestamp: '2026-04-07T15:12:00Z' },
+    { id: 'ins-20', content: '「标化考试」的 GRE 出分时间如果晚于 8 月，会直接挤压「秋季申请节奏」的文书迭代周期', sourceNodeIds: ['s2-bg-test', 's2-timeline-fall'], sourceLabels: ['标化考试', '秋季申请节奏'], timestamp: '2026-04-05T13:30:00Z' },
+    { id: 'ins-21', content: '「CV 优化」的量化成果依赖「科研经历」的产出——实验室进展直接影响文书质量', sourceNodeIds: ['s2-doc-cv', 's2-bg-research'], sourceLabels: ['CV 优化', '科研经历'], timestamp: '2026-04-05T12:30:00Z' },
+    { id: 'ins-22', content: '「春季备选方案」和「秋季申请节奏」在时间和精力分配上存在冲突，建议秋季全力冲刺', sourceNodeIds: ['s2-timeline-spring', 's2-timeline-fall'], sourceLabels: ['春季备选方案', '秋季申请节奏'], timestamp: '2026-04-06T10:00:00Z' },
   ],
   'sp-3': [
-    { id: 'ins-6', content: 'TAM 测算数据已完成，营收预测模型可以开始搭建', sourceNodeIds: ['s3-market-tam', 's3-finance-rev'], sourceLabels: ['TAM 测算', '营收预测'], timestamp: '2026-04-06T11:25:00Z' },
-    { id: 'ins-7', content: '产品方案中的用户价值描述与市场分析中的客群画像高度一致，叙事逻辑自洽', sourceNodeIds: ['s3-product', 's3-market'], sourceLabels: ['产品方案', '市场分析'], timestamp: '2026-04-06T10:45:00Z' },
+    { id: 'ins-30', content: '「资产配置」是连接「经济周期」和具体投资操作的桥梁——美林时钟框架可以指导大类资产轮动', sourceNodeIds: ['s3-invest-asset', 's3-macro-cycle'], sourceLabels: ['资产配置', '经济周期'], timestamp: '2026-04-05T10:00:00Z' },
+    { id: 'ins-31', content: '「价值投资」的长期持有理念与「量化策略」的频繁交易存在根本性冲突，但两者可在不同仓位层级共存', sourceNodeIds: ['s3-invest-value', 's3-invest-quant'], sourceLabels: ['价值投资', '量化策略'], timestamp: '2026-04-05T09:30:00Z' },
+    { id: 'ins-32', content: '「对冲策略」直接依赖「衍生品」工具——不理解期权定价就无法设计有效的对冲方案', sourceNodeIds: ['s3-risk-hedge', 's3-market-deriv'], sourceLabels: ['对冲策略', '衍生品'], timestamp: '2026-04-05T14:30:00Z' },
+    { id: 'ins-33', content: '「债券市场」与「股票市场」的负相关性是资产配置的基石——跌市中债券提供缓冲', sourceNodeIds: ['s3-market-bond', 's3-market-stock'], sourceLabels: ['债券市场', '股票市场'], timestamp: '2026-04-04T15:00:00Z' },
+  ],
+  'sp-4': [
+    { id: 'ins-40', content: '「体液调节」与「神经调节」不是独立系统而是协同网络——下丘脑既是神经中枢又是内分泌器官', sourceNodeIds: ['s4-hormone', 's4-nerve'], sourceLabels: ['体液调节', '神经调节'], timestamp: '2026-04-03T20:30:00Z' },
+    { id: 'ins-41', content: '「能量流动」单向递减而「物质循环」往复循环——两者同时进行但特征恰好相反，是高频对比考点', sourceNodeIds: ['s4-eco-energy', 's4-eco-matter'], sourceLabels: ['能量流动', '物质循环'], timestamp: '2026-04-04T20:00:00Z' },
+    { id: 'ins-42', content: '「生态系统信息传递」的生物学基础来自「神经调节」——个体水平和群体水平的知识在此交汇', sourceNodeIds: ['s4-eco-info', 's4-nerve'], sourceLabels: ['信息传递', '神经调节'], timestamp: '2026-04-04T19:30:00Z' },
+    { id: 'ins-43', content: '「种间关系」中的竞争排斥与「种群增长模型」的 K 值假设存在张力——竞争会改变 K 值本身', sourceNodeIds: ['s4-pop-relation', 's4-pop-growth'], sourceLabels: ['种间关系', '种群增长模型'], timestamp: '2026-04-05T19:30:00Z' },
   ],
 }
 
