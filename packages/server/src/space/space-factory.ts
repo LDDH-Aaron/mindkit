@@ -57,6 +57,8 @@ async function hydrateSession(
 ): Promise<void> {
   const now = new Date().toISOString()
   // 注册 session 元数据到运行态存储
+  // 先清空该 session 在运行态存储中的旧记录，避免多次 hydrate 造成重复
+  await storage.trimRecords(sessionId, 0)
   await storage.putSession({
     id: sessionId,
     label,
@@ -164,10 +166,27 @@ export function createSpaceAgent(ctx: SpaceFactoryContext): StelloAgent {
       context: await memory.assembleContext(sessionId),
       session: (await sessions.get(sessionId))!,
     }),
-    /** afterTurn 时追加 L3 记录并更新 turnCount */
-    afterTurn: async (sessionId, userMsg, assistantMsg) => {
-      await memory.appendRecord(sessionId, userMsg)
-      await memory.appendRecord(sessionId, assistantMsg)
+    /** afterTurn 时将 InMemoryStorage 的完整 L3 同步到 MemoryEngine（包含 tool 消息） */
+    afterTurn: async (sessionId, _userMsg, _assistantMsg) => {
+      // 从 InMemoryStorage 读取完整记录（含 tool call/result），同步到持久化层
+      const allRecords = await sessionStorage.listRecords(sessionId)
+      const turnRecords = allRecords.map((m) => ({
+        role: m.role,
+        content: m.content,
+        timestamp: m.timestamp ?? new Date().toISOString(),
+        metadata: {
+          ...(m.toolCalls ? { toolCalls: m.toolCalls } : {}),
+          ...(m.toolCallId ? { toolCallId: m.toolCallId } : {}),
+        },
+      }))
+      if (memory.replaceRecords) {
+        await memory.replaceRecords(sessionId, turnRecords)
+      } else {
+        // fallback: 清空后逐条追加
+        for (const record of turnRecords) {
+          await memory.appendRecord(sessionId, record)
+        }
+      }
       const current = await sessions.get(sessionId)
       if (current) {
         await sessions.updateMeta(sessionId, { turnCount: current.turnCount + 1 })
