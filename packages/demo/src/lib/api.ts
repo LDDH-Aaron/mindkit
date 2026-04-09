@@ -101,14 +101,14 @@ export interface PublishedKit {
 /* ─── Mock 数据 ─── */
 
 let mockSpaces: Space[] = [
-  { id: 'sp-1', label: 'AI 产品头脑风暴', emoji: '🧠', color: '#3a6bc5', mode: 'AUTO', deliverables: ['PRD 文档', '技术方案'], description: '围绕 AI Native 产品方向展开发散讨论，涵盖用户画像、核心场景和 MVP 功能定义', systemPrompt: '', createdAt: '2026-04-08T00:00:00Z', lastActiveAt: '2026-04-09T14:30:00Z' },
+  { id: 'sp-1', label: 'MindKit 产品构建', emoji: '✨', color: '#3a6bc5', mode: 'AUTO', deliverables: ['PRD 文档', '技术方案'], description: '围绕 AI Native 产品方向展开发散讨论，涵盖用户画像、核心场景和 MVP 功能定义', systemPrompt: '', createdAt: '2026-04-08T00:00:00Z', lastActiveAt: '2026-04-09T14:30:00Z' },
   { id: 'sp-2', label: '留学咨询规划', emoji: '🎓', color: '#7E57C2', mode: 'AUTO', deliverables: ['选校清单', '时间线规划', '文书大纲'], description: '从择校到申请，系统规划美国 CS 硕士留学全流程', systemPrompt: '', createdAt: '2026-04-05T00:00:00Z', lastActiveAt: '2026-04-09T11:00:00Z' },
   { id: 'sp-3', label: '金融知识体系构建', emoji: '💹', color: '#c94a4a', mode: 'AUTO', deliverables: ['知识图谱', '投资框架'], description: '从宏观经济到个人投资，搭建系统性的金融认知框架', systemPrompt: '', createdAt: '2026-04-04T00:00:00Z', lastActiveAt: '2026-04-09T09:30:00Z' },
   { id: 'sp-4', label: '高二生物·必修三', emoji: '🧬', color: '#5ba85b', mode: 'AUTO', deliverables: ['知识梳理', '易错点总结'], description: '高二上学期生物必修三核心知识点系统学习与梳理', systemPrompt: '', createdAt: '2026-04-03T00:00:00Z', lastActiveAt: '2026-04-09T08:00:00Z' },
 ]
 
 const mockTrees: Record<string, SessionTreeNode[]> = {
-  // ── Space 1: AI 产品头脑风暴（演示用，初始只有根节点，对话后逐步生长）──
+  // ── Space 1: MindKit 产品构建（演示用，初始只有根节点，对话后逐步生长）──
   'sp-1': [
     {
       id: 's1-main', label: 'MindKit', status: 'active', turnCount: 1, children: [],
@@ -304,7 +304,7 @@ const mockL2: Record<string, string> = {
 
 /** Mock L3 对话记录 */
 const mockMessages: Record<string, TurnRecord[]> = {
-  // ── Space 1: AI 产品头脑风暴（MindKit 商业化落地规划）──
+  // ── Space 1: MindKit 产品构建（MindKit 商业化落地规划）──
   's1-main': [
     { role: 'user', content: '我想用 MindKit 来规划 MindKit 自己的商业化落地，算是 dogfooding 了', timestamp: '2026-04-09T09:00:00Z' },
     { role: 'assistant', content: '这是最好的验证方式！用自己的产品规划自己的未来。MindKit 的核心概念是"思维拓扑"——让 AI 对话不再是线性的问答，而是可以分裂、关联、发现矛盾的树状结构。', timestamp: '2026-04-09T09:01:00Z' },
@@ -1092,7 +1092,7 @@ const mockMarketKits: MarketKit[] = [
 ]
 
 let mockPublished: PublishedKit[] = [
-  { id: 'pub-1', spaceId: 'sp-1', label: 'AI 产品头脑风暴', description: '多线程探索 AI 产品的 UX、后端、AI 能力', tags: ['AUTO', '产品'], forks: 12, publishedAt: '2026-04-07T12:00:00Z' },
+  { id: 'pub-1', spaceId: 'sp-1', label: 'MindKit 产品构建', description: '多线程探索 AI 产品的 UX、后端、AI 能力', tags: ['AUTO', '产品'], forks: 12, publishedAt: '2026-04-07T12:00:00Z' },
 ]
 
 export async function listMarketKits(): Promise<{ kits: MarketKit[] }> {
