@@ -331,6 +331,42 @@ export function createSpaceAgent(ctx: SpaceFactoryContext): StelloAgent {
           lifecycle.afterTurn(sessionId, userRecord, assistantRecord).catch(() => {})
         },
         onSessionFork({ parentId, child }) {
+          // 将子 session 的初始记录持久化到 MemoryEngine，并记录继承记录数
+          sessionStorage.listRecords(child.id).then(async (records) => {
+            if (records.length > 0) {
+              // 检测最后一条是否为 prompt 开场白（assistant 且无 toolCalls）
+              const last = records[records.length - 1]!
+              const hasPrompt = last.role === 'assistant' && !last.toolCalls?.length
+              const inheritedCount = hasPrompt ? records.length - 1 : records.length
+
+              const turnRecords = records.map((m) => ({
+                role: m.role,
+                content: m.content,
+                timestamp: m.timestamp ?? new Date().toISOString(),
+                metadata: {
+                  ...(m.toolCalls ? { toolCalls: m.toolCalls } : {}),
+                  ...(m.toolCallId ? { toolCallId: m.toolCallId } : {}),
+                },
+              }))
+              if (memory.replaceRecords) {
+                await memory.replaceRecords(child.id, turnRecords)
+              } else {
+                for (const record of turnRecords) {
+                  await memory.appendRecord(child.id, record)
+                }
+              }
+
+              // 将继承记录数写入 session metadata，供 records API 过滤显示
+              if (inheritedCount > 0) {
+                await sessions.updateMeta(child.id, {
+                  metadata: { _stello: { inheritedRecordCount: inheritedCount } },
+                })
+              }
+            }
+          }).catch((err) => {
+            console.error(`[space-factory] persist fork records ERROR child=${child.id}`, err)
+          })
+
           // 检测是否使用了预设 profile
           const profileName = profiles.consumeLastResolved()
           if (profileName && presetNames.has(profileName) && ctx.onPresetActivated) {

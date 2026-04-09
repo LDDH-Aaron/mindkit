@@ -187,8 +187,14 @@ export function buildRoutes(spaceManager: SpaceManager): Hono {
     const agent = spaceManager.getAgent(id, meta)
     try {
       const records = await agent.memory.readRecords(sid)
+      // 跳过 fork 继承的父 session 记录，只返回子 session 自身的对话
+      const sessionMeta = await agent.sessions.get(sid)
+      const inheritedCount =
+        (sessionMeta?.metadata?._stello as Record<string, unknown> | undefined)
+          ?.inheritedRecordCount as number | undefined
+      const displayRecords = inheritedCount ? records.slice(inheritedCount) : records
       return c.json({
-        records: records.map((r) => ({
+        records: displayRecords.map((r) => ({
           role: r.role,
           content: r.content,
           timestamp: r.timestamp,
