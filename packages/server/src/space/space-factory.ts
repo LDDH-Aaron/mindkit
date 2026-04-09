@@ -223,21 +223,26 @@ export function createSpaceAgent(ctx: SpaceFactoryContext): StelloAgent {
         })
         if (!session) throw new Error(`Failed to load session: ${sessionId}`)
 
-        // 若该 session 对应的 PresetSession 有自定义 consolidatePrompt，覆盖 consolidate 方法
+        // 若该 session 对应的 PresetSession 有自定义 consolidatePrompt，使用节点专属提示词
         const matchedProfile = ctx.spaceMeta?.presetSessions?.find(
           (p) => p.consolidatePrompt && (p.name === meta.label || p.label === meta.label),
         )
-        if (matchedProfile?.consolidatePrompt) {
-          const customFn = createDefaultConsolidateFn(matchedProfile.consolidatePrompt, llmCallFn)
-          return {
-            ...session,
-            // 覆盖 consolidate：忽略全局 fn，使用节点专属提示词
-            consolidate: (_globalFn: Parameters<typeof session.consolidate>[0]) =>
-              session.consolidate(customFn),
-          }
-        }
+        const effectiveConsolidate = matchedProfile?.consolidatePrompt
+          ? async (_globalFn: Parameters<typeof session.consolidate>[0]) => {
+              const customFn = createDefaultConsolidateFn(matchedProfile.consolidatePrompt!, llmCallFn)
+              await session.consolidate(customFn)
+            }
+          : session.consolidate.bind(session)
 
-        return session
+        // 包装 consolidate：写完 InMemoryStorage 后同步持久化 L2 到 FileSystemMemoryEngine
+        return {
+          ...session,
+          consolidate: async (fn: Parameters<typeof session.consolidate>[0]) => {
+            await effectiveConsolidate(fn)
+            const l2 = await sessionStorage.getMemory(sessionId)
+            if (l2) await memory.writeMemory(sessionId, l2)
+          },
+        }
       },
       /** 解析 Main Session，先恢复运行态再加载 */
       mainSessionResolver: async () => {

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
-import { fetchTopology, fetchSpaces } from '@/lib/api'
+import { fetchTopology, fetchSpaces, enterSession } from '@/lib/api'
 import { ChatPanel } from '@/components/ChatPanel'
 import { TopologyCanvas } from '@/components/TopologyCanvas'
 import { SessionDetailPanel } from '@/components/SessionDetailPanel'
@@ -210,6 +210,8 @@ export function KitWorkspace() {
             onNodeSelect={(nodeId) => {
               if (nodeId.startsWith('preset:')) return
               setSelectedNodeId(nodeId)
+              // 通知 Orchestrator 切换 session，触发离开旧 session 的 consolidation
+              enterSession(spaceId!, nodeId).catch(() => {})
             }}
             onNodeDetail={(nodeId) => {
               if (nodeId.startsWith('preset:')) return

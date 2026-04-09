@@ -1,6 +1,5 @@
 # MindKit
 
-基于 [Stello](https://github.com/stello-agent/stello) SDK 的本地对话拓扑产品。
 
 ## Clone
 
