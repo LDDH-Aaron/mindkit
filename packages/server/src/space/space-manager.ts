@@ -29,6 +29,8 @@ export interface SpaceMeta {
   presetSessions?: PresetSession[]
   /** 技能列表 */
   skills?: SpaceSkill[]
+  /** preset 激活映射：profileName → sessionId */
+  activatedPresets?: Record<string, string>
 }
 
 /** createSpace 的请求体 */
@@ -247,6 +249,19 @@ export class SpaceManager {
   /** 获取 Space 的 ArtifactStore */
   getArtifactStore(spaceId: string): ArtifactStore {
     return new ArtifactStore(path.join(this.spacesDir, spaceId))
+  }
+
+  /** 记录 preset 被激活（内部方法，不暴露为 API） */
+  async recordPresetActivation(spaceId: string, profileName: string, sessionId: string): Promise<void> {
+    const meta = await this.readMeta(spaceId).catch(() => null)
+    if (!meta) return
+
+    const activated = meta.activatedPresets ?? {}
+    activated[profileName] = sessionId
+    meta.activatedPresets = activated
+
+    const metaPath = path.join(this.spacesDir, spaceId, 'meta.json')
+    await fs.writeFile(metaPath, JSON.stringify(meta, null, 2))
   }
 
   /** 读取指定 spaceId 的 meta.json */

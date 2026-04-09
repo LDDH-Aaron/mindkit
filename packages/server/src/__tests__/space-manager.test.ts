@@ -146,6 +146,29 @@ describe('SpaceManager', () => {
     })
   })
 
+  describe('recordPresetActivation', () => {
+    it('records profileName → sessionId mapping in meta', async () => {
+      const meta = await manager.createSpace({ name: 'Test', presetDirName: 'test-preset' })
+      await manager.recordPresetActivation(meta.id, 'idea-deep-dive', 'session-123')
+
+      const updated = await manager.getSpace(meta.id)
+      expect(updated!.activatedPresets).toEqual({ 'idea-deep-dive': 'session-123' })
+    })
+
+    it('preserves existing activations when adding new ones', async () => {
+      const meta = await manager.createSpace({ name: 'Test', presetDirName: 'test-preset' })
+      await manager.recordPresetActivation(meta.id, 'a', 'session-1')
+      await manager.recordPresetActivation(meta.id, 'b', 'session-2')
+
+      const updated = await manager.getSpace(meta.id)
+      expect(updated!.activatedPresets).toEqual({ a: 'session-1', b: 'session-2' })
+    })
+
+    it('does nothing if space does not exist', async () => {
+      await manager.recordPresetActivation('nonexistent', 'a', 'session-1')
+    })
+  })
+
   describe('getAgent', () => {
     it('throws if preset is unknown', async () => {
       const meta = await manager.createSpace({ name: 'X', presetDirName: 'test-preset' })
