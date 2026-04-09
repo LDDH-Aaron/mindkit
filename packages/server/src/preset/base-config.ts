@@ -7,10 +7,9 @@
 export const BASE_SYSTEM_SUFFIX = `
 
 ## 工具使用规则
-- 当识别到一个独立的子话题（如竞品分析、用户画像、技术方案等），**必须立即调用** stello_create_session
-- 调用时必须提供：
-  - label：子会话名称，如「竞品分析」「用户画像」
-  - systemPrompt：该子话题专家的系统提示词，明确限定它只负责该方向
-- 可以提供 prompt 作为子会话的第一条消息，帮助它立即进入工作状态
+- 当识别到一个独立的子话题，**必须立即调用** stello_create_session
+- 如果有合适的 profile，优先使用 profile（会自动配置系统提示词和工具）
+- 没有合适 profile 时，提供 label 和 systemPrompt 创建自由子会话
+- 可以提供 prompt 作为子会话的第一条 assistant 开场消息，帮助它立即进入工作状态
 - 不要等用户明确要求，根据对话上下文主动判断
 `.trim()

@@ -246,6 +246,7 @@ function MarketModal({
   const [emoji, setEmoji] = useState('🧠')
   const [color, setColor] = useState('#6366f1')
   const [showDetail, setShowDetail] = useState(false)
+  const [detailTab, setDetailTab] = useState<'prompt' | 'sessions' | 'skills' | 'memory'>('prompt')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -366,56 +367,127 @@ function MarketModal({
                 </button>
 
                 {showDetail && (
-                  <div className="mt-3 space-y-3">
-                    {/* System Prompt */}
-                    <div>
-                      <label className="block text-[10px] font-medium text-text-muted mb-1">系统提示词</label>
-                      <div className="px-3 py-2 rounded-lg bg-card border border-border text-xs font-mono text-text-secondary whitespace-pre-wrap max-h-32 overflow-y-auto">
-                        {selected.systemPrompt || '(使用默认)'}
-                      </div>
+                  <div className="mt-3">
+                    {/* Tab 栏 */}
+                    <div className="flex border-b border-border mb-3">
+                      {([
+                        { key: 'prompt' as const, label: '系统提示词' },
+                        { key: 'sessions' as const, label: '预设节点', count: selected.forkProfiles.length },
+                        { key: 'skills' as const, label: '技能', count: selected.skills.length },
+                        { key: 'memory' as const, label: '记忆提炼' },
+                      ]).map((tab) => (
+                        <button
+                          key={tab.key}
+                          onClick={() => setDetailTab(tab.key)}
+                          className={cn(
+                            'px-3 py-2 text-[11px] font-medium transition-colors',
+                            detailTab === tab.key
+                              ? 'text-primary border-b-2 border-primary'
+                              : 'text-text-muted hover:text-text-secondary',
+                          )}
+                        >
+                          {tab.label}
+                          {'count' in tab && (tab as { count?: number }).count! > 0 && (
+                            <span className="ml-1 text-[10px] bg-primary-light text-primary px-1.5 rounded-full">{(tab as { count?: number }).count}</span>
+                          )}
+                        </button>
+                      ))}
                     </div>
 
-                    {/* Fork Profiles */}
-                    {selected.forkProfiles.length > 0 && (
-                      <div>
-                        <label className="block text-[10px] font-medium text-text-muted mb-1">
-                          预设节点 ({selected.forkProfiles.length})
-                        </label>
-                        <div className="space-y-1.5">
-                          {selected.forkProfiles.map((fp, i) => (
-                            <div key={i} className="px-3 py-2 rounded-lg bg-card border border-border">
-                              <div className="text-xs font-medium">{fp.name}</div>
-                              {fp.systemPrompt && (
-                                <div className="text-[10px] text-text-muted mt-1 line-clamp-2 font-mono">{fp.systemPrompt}</div>
-                              )}
-                            </div>
-                          ))}
+                    {/* 系统提示词 */}
+                    {detailTab === 'prompt' && (
+                      <div className="space-y-3">
+                        <div className="px-3 py-2 rounded-lg bg-card border border-border text-xs font-mono text-text-secondary whitespace-pre-wrap max-h-48 overflow-y-auto">
+                          {selected.systemPrompt || '(使用默认)'}
                         </div>
+                        {selected.expectedArtifacts && (
+                          <div>
+                            <label className="block text-[10px] font-medium text-text-muted mb-1">预期产物</label>
+                            <div className="px-3 py-2 rounded-lg bg-card border border-border text-xs text-text-secondary">
+                              {selected.expectedArtifacts}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
 
-                    {/* Skills */}
-                    {selected.skills.length > 0 && (
-                      <div>
-                        <label className="block text-[10px] font-medium text-text-muted mb-1">
-                          技能 ({selected.skills.length})
-                        </label>
-                        <div className="space-y-1.5">
-                          {selected.skills.map((sk, i) => (
+                    {/* 预设节点 */}
+                    {detailTab === 'sessions' && (
+                      <div className="space-y-2">
+                        {selected.forkProfiles.length === 0 ? (
+                          <p className="text-[11px] text-text-muted">无预设节点</p>
+                        ) : (
+                          selected.forkProfiles.map((fp, i) => (
+                            <div key={i} className="px-3 py-2.5 rounded-lg bg-card border border-border space-y-1.5">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-medium">{fp.name}</span>
+                                <div className="flex gap-1 ml-auto">
+                                  {fp.systemPromptMode && (
+                                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-muted text-text-muted">{fp.systemPromptMode}</span>
+                                  )}
+                                  {fp.context && (
+                                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-muted text-text-muted">{fp.context}</span>
+                                  )}
+                                </div>
+                              </div>
+                              {fp.systemPrompt && (
+                                <div>
+                                  <label className="block text-[9px] text-text-muted mb-0.5">系统提示词</label>
+                                  <div className="text-[10px] text-text-secondary font-mono whitespace-pre-wrap max-h-24 overflow-y-auto">
+                                    {fp.systemPrompt}
+                                  </div>
+                                </div>
+                              )}
+                              {fp.consolidatePrompt && (
+                                <div>
+                                  <label className="block text-[9px] text-text-muted mb-0.5">Consolidate 提示词</label>
+                                  <div className="text-[10px] text-text-secondary font-mono whitespace-pre-wrap max-h-20 overflow-y-auto">
+                                    {fp.consolidatePrompt}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+
+                    {/* 技能 */}
+                    {detailTab === 'skills' && (
+                      <div className="space-y-1.5">
+                        {selected.skills.length === 0 ? (
+                          <p className="text-[11px] text-text-muted">无技能</p>
+                        ) : (
+                          selected.skills.map((sk, i) => (
                             <div key={i} className="px-3 py-2 rounded-lg bg-card border border-border">
                               <div className="text-xs font-medium">{sk.name}</div>
                               <div className="text-[10px] text-text-muted">{sk.description}</div>
                             </div>
-                          ))}
-                        </div>
+                          ))
+                        )}
                       </div>
                     )}
 
-                    {selected.expectedArtifacts && (
-                      <div>
-                        <label className="block text-[10px] font-medium text-text-muted mb-1">预期产物</label>
-                        <div className="px-3 py-2 rounded-lg bg-card border border-border text-xs text-text-secondary">
-                          {selected.expectedArtifacts}
+                    {/* 记忆提炼 */}
+                    {detailTab === 'memory' && (
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-[10px] font-medium text-text-muted mb-1">
+                            Consolidate Prompt
+                            <span className="ml-1 text-[10px] font-normal">（L3 对话 → L2 摘要）</span>
+                          </label>
+                          <div className="px-3 py-2 rounded-lg bg-card border border-border text-xs font-mono text-text-secondary whitespace-pre-wrap max-h-32 overflow-y-auto">
+                            {selected.consolidatePrompt || '(使用 SDK 默认)'}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-medium text-text-muted mb-1">
+                            Integrate Prompt
+                            <span className="ml-1 text-[10px] font-normal">（所有 L2 → synthesis + insights）</span>
+                          </label>
+                          <div className="px-3 py-2 rounded-lg bg-card border border-border text-xs font-mono text-text-secondary whitespace-pre-wrap max-h-32 overflow-y-auto">
+                            {selected.integratePrompt || '(使用 SDK 默认)'}
+                          </div>
                         </div>
                       </div>
                     )}

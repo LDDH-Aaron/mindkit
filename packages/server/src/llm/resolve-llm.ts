@@ -3,12 +3,10 @@ import type { LLMCallFn } from '@stello-ai/core'
 import type { LLMAdapter } from '@stello-ai/session'
 
 /**
- * 完全对齐 devtools 的 LLM 配置模式。
+ * LLM 完全由环境变量决定。
  * 环境变量：OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL, OPENAI_MAX_CONTEXT_TOKENS
- * preset.json 中的 llm.model 作为 fallback，环境变量优先。
  */
 export function resolveLLM(
-  presetModel: string,
   env: Record<string, string | undefined>,
 ): LLMAdapter {
   const apiKey = env['OPENAI_API_KEY']
@@ -22,7 +20,7 @@ export function resolveLLM(
   }
 
   const baseURL = env['OPENAI_BASE_URL'] ?? 'https://api.minimaxi.com/v1'
-  const model = env['OPENAI_MODEL'] ?? presetModel
+  const model = env['OPENAI_MODEL'] ?? 'gpt-4o'
   const maxContextTokens = Number(env['OPENAI_MAX_CONTEXT_TOKENS'] ?? 1_000_000)
 
   return createOpenAICompatibleAdapter({ apiKey, baseURL, model, maxContextTokens })

@@ -10,7 +10,6 @@ const validPreset = {
   systemPrompt: 'You are helpful.',
   forkProfiles: [],
   skills: [],
-  llm: { model: 'claude-sonnet-4-20250514' },
   consolidatePrompt: null,
   integratePrompt: null,
 }
@@ -26,33 +25,34 @@ describe('loadPresets', () => {
     expect(await loadPresets(tmpDir)).toEqual([])
   })
 
-  it('loads a valid preset with correct dirName', async () => {
-    const dir = path.join(tmpDir, 'my-preset')
-    fs.mkdirSync(dir)
-    fs.writeFileSync(path.join(dir, 'preset.json'), JSON.stringify(validPreset))
+  it('loads a valid preset JSON file with correct dirName', async () => {
+    fs.writeFileSync(path.join(tmpDir, 'my-preset.json'), JSON.stringify(validPreset))
     const presets = await loadPresets(tmpDir)
     expect(presets).toHaveLength(1)
     expect(presets[0]!.dirName).toBe('my-preset')
     expect(presets[0]!.name).toBe('Test')
   })
 
-  it('skips directories without preset.json', async () => {
-    fs.mkdirSync(path.join(tmpDir, 'empty-dir'))
+  it('skips non-JSON files', async () => {
+    fs.writeFileSync(path.join(tmpDir, 'readme.md'), '# hello')
     expect(await loadPresets(tmpDir)).toEqual([])
   })
 
-  it('loads multiple presets', async () => {
+  it('loads multiple preset files', async () => {
     for (const name of ['a', 'b', 'c']) {
-      const dir = path.join(tmpDir, name)
-      fs.mkdirSync(dir)
-      fs.writeFileSync(path.join(dir, 'preset.json'), JSON.stringify({ ...validPreset, name }))
+      fs.writeFileSync(path.join(tmpDir, `${name}.json`), JSON.stringify({ ...validPreset, name }))
     }
     const presets = await loadPresets(tmpDir)
     expect(presets).toHaveLength(3)
   })
 
-  it('skips files (non-directories)', async () => {
-    fs.writeFileSync(path.join(tmpDir, 'some-file.json'), '{}')
+  it('skips directories', async () => {
+    fs.mkdirSync(path.join(tmpDir, 'some-dir'))
+    expect(await loadPresets(tmpDir)).toEqual([])
+  })
+
+  it('skips invalid JSON files', async () => {
+    fs.writeFileSync(path.join(tmpDir, 'bad.json'), 'not json')
     expect(await loadPresets(tmpDir)).toEqual([])
   })
 })

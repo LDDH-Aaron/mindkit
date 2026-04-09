@@ -17,7 +17,6 @@ const TEST_PRESET: PresetConfig = {
   systemPrompt: 'test prompt',
   forkProfiles: [],
   skills: [],
-  llm: { model: 'test' },
   consolidatePrompt: null,
   integratePrompt: null,
 }

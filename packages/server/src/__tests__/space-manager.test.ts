@@ -18,7 +18,6 @@ const TEST_PRESET: PresetConfig = {
   systemPrompt: 'You are a test assistant.',
   forkProfiles: [],
   skills: [],
-  llm: { model: 'claude-test' },
   consolidatePrompt: null,
   integratePrompt: null,
 }

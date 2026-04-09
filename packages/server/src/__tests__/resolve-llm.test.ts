@@ -7,39 +7,23 @@ describe('resolveLLM', () => {
     OPENAI_BASE_URL: 'https://api.minimaxi.com/v1',
   }
 
-  it('creates adapter for any model when OPENAI_API_KEY is set', () => {
-    const adapter = resolveLLM('claude-sonnet-4-20250514', env)
+  it('creates adapter when OPENAI_API_KEY is set', () => {
+    const adapter = resolveLLM(env)
     expect(adapter).toBeDefined()
     expect(adapter.maxContextTokens).toBeGreaterThan(0)
   })
 
-  it('creates adapter for gpt-* models', () => {
-    const adapter = resolveLLM('gpt-4o', env)
-    expect(adapter).toBeDefined()
-    expect(adapter.maxContextTokens).toBeGreaterThan(0)
-  })
-
-  it('creates adapter for o3-* models', () => {
-    const adapter = resolveLLM('o3-mini', env)
-    expect(adapter).toBeDefined()
-  })
-
-  it('creates adapter for o4-* models', () => {
-    const adapter = resolveLLM('o4-mini', env)
-    expect(adapter).toBeDefined()
-  })
-
-  it('creates adapter for custom models (e.g. MiniMax)', () => {
-    const adapter = resolveLLM('MiniMax-M2.7', env)
+  it('respects OPENAI_MODEL env var', () => {
+    const adapter = resolveLLM({ ...env, OPENAI_MODEL: 'gpt-4o' })
     expect(adapter).toBeDefined()
   })
 
   it('throws when OPENAI_API_KEY is missing', () => {
-    expect(() => resolveLLM('gpt-4o', {})).toThrow('OPENAI_API_KEY')
+    expect(() => resolveLLM({})).toThrow('OPENAI_API_KEY')
   })
 
   it('respects OPENAI_MAX_CONTEXT_TOKENS env var', () => {
-    const adapter = resolveLLM('test-model', {
+    const adapter = resolveLLM({
       ...env,
       OPENAI_MAX_CONTEXT_TOKENS: '50000',
     })

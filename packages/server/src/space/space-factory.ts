@@ -106,9 +106,9 @@ export function createSpaceAgent(ctx: SpaceFactoryContext): StelloAgent {
   const domainPrompt = ctx.spaceMeta?.systemPrompt ?? ctx.config.systemPrompt
   const composedSystemPrompt = domainPrompt + '\n\n' + BASE_SYSTEM_SUFFIX
 
-  // LLM: 环境变量优先，preset 的 llm.model 作为 fallback
-  const model = ctx.env['OPENAI_MODEL'] ?? ctx.config.llm.model
-  const llmAdapter = resolveLLM(model, ctx.env)
+  // LLM: 完全由环境变量决定（OPENAI_MODEL / OPENAI_API_KEY / OPENAI_BASE_URL）
+  const llmAdapter = resolveLLM(ctx.env)
+
   const llmCallFn = toLLMCallFn(llmAdapter)
 
   // Skills: preset first, then space-level override
@@ -130,6 +130,7 @@ export function createSpaceAgent(ctx: SpaceFactoryContext): StelloAgent {
       systemPromptMode: fp.systemPromptMode,
       context: fp.context,
       skills: fp.skills,
+      prompt: fp.prompt,
     })
   }
   if (ctx.spaceMeta?.presetSessions) {
@@ -139,6 +140,7 @@ export function createSpaceAgent(ctx: SpaceFactoryContext): StelloAgent {
         systemPromptMode: fp.systemPromptMode ?? 'prepend',
         context: fp.context,
         skills: fp.skills,
+        prompt: fp.guidePrompt,
       })
     }
   }

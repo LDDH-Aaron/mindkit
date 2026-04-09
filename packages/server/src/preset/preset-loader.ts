@@ -3,10 +3,10 @@ import * as path from 'node:path'
 
 /**
  * Preset 配置（Kit Market 商品），字段与手动创建 Kit 对齐。
- * 每个 preset 目录下有一个 preset.json。
+ * 每个 preset 是 presetsDir 下的一个 JSON 文件，如 hackathon-brainstorm.json。
  */
 export interface PresetConfig {
-  /** 目录名（唯一标识，运行时填充） */
+  /** 文件名（不含扩展名，唯一标识，运行时填充） */
   dirName: string
   /** 显示名称 */
   name: string
@@ -30,6 +30,8 @@ export interface PresetConfig {
     context?: 'none' | 'inherit'
     /** 该 fork profile 专属的 L3→L2 consolidation 提示词 */
     consolidatePrompt?: string
+    /** 子会话的第一条 assistant 开场消息 */
+    prompt?: string
     skills?: string[]
   }>
   /** 技能列表 */
@@ -38,32 +40,29 @@ export interface PresetConfig {
     description: string
     content: string
   }>
-  /** 默认 LLM 模型 */
-  llm: { model: string }
   /** 自定义 consolidation prompt（null 使用默认） */
   consolidatePrompt: string | null
   /** 自定义 integration prompt（null 使用默认） */
   integratePrompt: string | null
 }
 
-/** 扫描目录加载所有 preset */
+/** 扫描目录下所有 JSON 文件加载 preset */
 export async function loadPresets(presetsDir: string): Promise<PresetConfig[]> {
-  let names: string[]
+  let entries: import('node:fs').Dirent[]
   try {
-    const entries = await fs.readdir(presetsDir, { withFileTypes: true })
-    names = entries.filter((e) => e.isDirectory()).map((e) => String(e.name))
+    entries = await fs.readdir(presetsDir, { withFileTypes: true })
   } catch {
     return []
   }
 
   const results: PresetConfig[] = []
-  for (const dirName of names) {
+  for (const entry of entries) {
+    const name = String(entry.name)
+    if (!entry.isFile() || !name.endsWith('.json')) continue
     try {
-      const raw = await fs.readFile(
-        path.join(presetsDir, dirName, 'preset.json'),
-        'utf-8',
-      )
+      const raw = await fs.readFile(path.join(presetsDir, name), 'utf-8')
       const parsed = JSON.parse(raw) as Omit<PresetConfig, 'dirName'>
+      const dirName = name.replace(/\.json$/, '')
       results.push({
         ...parsed,
         dirName,
@@ -74,7 +73,7 @@ export async function loadPresets(presetsDir: string): Promise<PresetConfig[]> {
         expectedArtifacts: parsed.expectedArtifacts ?? '',
       })
     } catch {
-      // 跳过无效目录
+      // 跳过无效文件
     }
   }
   return results
