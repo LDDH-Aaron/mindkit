@@ -1,4 +1,4 @@
-import type { SpaceMeta, PresetConfig, SessionTreeNode, TurnRecord, TurnResult, SpaceEvent } from './types'
+import type { SpaceMeta, PresetConfig, SessionTreeNode, TurnRecord, TurnResult, SpaceEvent, SessionDetail } from './types'
 
 const BASE = '/api'
 
@@ -101,4 +101,29 @@ export function fetchEvents(
   limit = 100,
 ): Promise<{ events: SpaceEvent[] }> {
   return request(`/spaces/${spaceId}/events?limit=${limit}`)
+}
+
+/* ── Session Detail ── */
+
+/** 获取 session 详情（L2/synthesis） */
+export function fetchSessionDetail(
+  spaceId: string,
+  sessionId: string,
+): Promise<SessionDetail> {
+  return request(`/spaces/${spaceId}/sessions/${sessionId}/detail`)
+}
+
+/** 手动触发 consolidation */
+export function triggerConsolidate(
+  spaceId: string,
+  sessionId: string,
+): Promise<{ ok: true; l2: string }> {
+  return request(`/spaces/${spaceId}/sessions/${sessionId}/consolidate`, { method: 'POST' })
+}
+
+/** 手动触发 integration */
+export function triggerIntegrate(
+  spaceId: string,
+): Promise<{ ok: true; synthesis: string | null }> {
+  return request(`/spaces/${spaceId}/integrate`, { method: 'POST' })
 }

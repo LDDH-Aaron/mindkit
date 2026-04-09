@@ -132,3 +132,21 @@ export interface SpaceEvent {
   kind: string
   payload: Record<string, unknown>
 }
+
+/** Session 详情 — 子节点 */
+export interface SessionDetailChild {
+  type: 'child'
+  label: string
+  l2: string | null
+  insight: string | null
+}
+
+/** Session 详情 — Main Session */
+export interface SessionDetailMain {
+  type: 'main'
+  synthesis: string | null
+  childL2s: Array<{ sessionId: string; label: string; l2: string | null }>
+}
+
+/** Session 详情（discriminated union） */
+export type SessionDetail = SessionDetailChild | SessionDetailMain

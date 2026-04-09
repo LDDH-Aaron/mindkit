@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react'
 import { fetchTopology, fetchSpaces } from '@/lib/api'
 import { ChatPanel } from '@/components/ChatPanel'
 import { TopologyCanvas } from '@/components/TopologyCanvas'
+import { SessionDetailPanel } from '@/components/SessionDetailPanel'
 import type { SessionTreeNode, TopoNode, SpaceMeta, WsMessage } from '@/lib/types'
 
 /** 递归树 → 扁平节点数组 */
@@ -30,6 +31,7 @@ export function KitWorkspace() {
   const [error, setError] = useState<string | null>(null)
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
+  const [detailSessionId, setDetailSessionId] = useState<string | null>(null)
 
   /** 拉取拓扑并扁平化 */
   const refreshTopology = useCallback(async () => {
@@ -167,13 +169,21 @@ export function KitWorkspace() {
           />
         </div>
 
-        {/* 右侧：拓扑图 */}
-        <div className="w-1/2">
+        {/* 右侧：拓扑图 + 详情面板 */}
+        <div className="w-1/2 relative">
           <TopologyCanvas
             nodes={nodes}
             selectedNodeId={selectedNodeId}
             onNodeSelect={setSelectedNodeId}
+            onNodeDetail={setDetailSessionId}
           />
+          {detailSessionId && spaceId && (
+            <SessionDetailPanel
+              spaceId={spaceId}
+              sessionId={detailSessionId}
+              onClose={() => setDetailSessionId(null)}
+            />
+          )}
         </div>
       </div>
     </div>

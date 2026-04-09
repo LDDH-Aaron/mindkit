@@ -197,10 +197,11 @@ interface TopologyCanvasProps {
   nodes: TopoNode[]
   selectedNodeId: string | null
   onNodeSelect: (nodeId: string) => void
+  onNodeDetail?: (nodeId: string) => void
 }
 
 /** 节点拓扑图组件 */
-export function TopologyCanvas({ nodes, selectedNodeId, onNodeSelect }: TopologyCanvasProps) {
+export function TopologyCanvas({ nodes, selectedNodeId, onNodeSelect, onNodeDetail }: TopologyCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const nodesRef = useRef<LayoutNode[]>([])
@@ -321,8 +322,11 @@ export function TopologyCanvas({ nodes, selectedNodeId, onNodeSelect }: Topology
     const sx = e.clientX - rect.left
     const sy = e.clientY - rect.top
     const node = findNodeAt(sx, sy)
-    if (node) onNodeSelect(node.id)
-  }, [findNodeAt, onNodeSelect])
+    if (node) {
+      onNodeSelect(node.id)
+      onNodeDetail?.(node.id)
+    }
+  }, [findNodeAt, onNodeSelect, onNodeDetail])
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault()

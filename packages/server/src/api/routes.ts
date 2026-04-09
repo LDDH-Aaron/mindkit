@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import type { SpaceManager, SpaceMeta, SpaceUpdatePatch, SpaceCreateBody } from '../space/space-manager'
+import { registerSessionDetailRoutes } from './session-detail'
 
 /** 构建 REST API 路由，注入 SpaceManager */
 export function buildRoutes(spaceManager: SpaceManager): Hono {
@@ -198,6 +199,9 @@ export function buildRoutes(spaceManager: SpaceManager): Hono {
       return c.json({ records: [] })
     }
   })
+
+  // Session detail / consolidate / integrate
+  registerSessionDetailRoutes(app, spaceManager)
 
   return app
 }
