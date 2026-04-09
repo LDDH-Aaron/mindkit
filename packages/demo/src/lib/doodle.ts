@@ -194,9 +194,12 @@ export function computeLayout(
     const item = queue.shift()!
     const { node, layer, parentId, parentX, parentY, angle } = item
 
-    // 确定性抖动
+    // 确定性抖动（单子节点时角度偏移更大，避免全往同一方向）
     const sr = seededRandom(node.id)
-    const jitterAngle = (sr - 0.5) * 0.3
+    const siblingCount = parentId ? (nodes.find(n => n.id === parentId)?.children.length ?? 0) + 1 : 1
+    const jitterAngle = siblingCount <= 1
+      ? (sr - 0.5) * Math.PI * 1.2  // 单子节点：±108° 大幅随机
+      : (sr - 0.5) * 0.3
     const jitterR = (seededRandom(node.id + '_r') - 0.5) * 16
 
     const radius = layer === 0 ? 0 : ringSpacing * (0.7 + layer * 0.55) + jitterR

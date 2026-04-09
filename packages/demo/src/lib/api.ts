@@ -578,14 +578,6 @@ function delay(ms = 300) {
   return new Promise(r => setTimeout(r, ms))
 }
 
-const mockReplies = [
-  "Interesting thought! Let me think about that...",
-  "That's a great angle — what if we also consider the edge cases?",
-  "I'd suggest breaking this into smaller pieces first.",
-  "Hmm, have you looked at how the existing topology handles this?",
-  "Let me sketch out a quick plan for that approach.",
-]
-
 let idCounter = 100
 
 /* ─── Real API (when MOCK=false) ─── */
@@ -654,7 +646,8 @@ export async function deleteSpace(spaceId: string): Promise<void> {
 export async function getSessionTree(spaceId: string): Promise<{ tree: SessionTreeNode[] }> {
   if (MOCK) {
     await delay()
-    return { tree: mockTrees[spaceId] || [] }
+    // 深拷贝，确保 React 检测到引用变化触发重渲染
+    return { tree: JSON.parse(JSON.stringify(mockTrees[spaceId] || [])) }
   }
   return request(`/spaces/${spaceId}/sessions`)
 }
@@ -662,44 +655,31 @@ export async function getSessionTree(spaceId: string): Promise<{ tree: SessionTr
 export async function sendTurn(spaceId: string, sessionId: string, _input: string): Promise<TurnResult> {
   if (MOCK) {
     await delay(800 + Math.random() * 700)
-    const reply = mockReplies[Math.floor(Math.random() * mockReplies.length)]
-    let splitNote = ''
-    // 随机概率创建 fork 节点来演示拓扑分裂
-    if (Math.random() > 0.6) {
-      const tree = mockTrees[spaceId]
-      if (tree) {
-        const findNode = (nodes: SessionTreeNode[], id: string): SessionTreeNode | null => {
-          for (const n of nodes) {
-            if (n.id === id) return n
-            const found = findNode(n.children, id)
-            if (found) return found
-          }
-          return null
+    // 每次发送都分裂出新子节点
+    const tree = mockTrees[spaceId]
+    let forkLabel = _input.slice(0, 12)
+    if (tree) {
+      const findNode = (nodes: SessionTreeNode[], id: string): SessionTreeNode | null => {
+        for (const n of nodes) {
+          if (n.id === id) return n
+          const found = findNode(n.children, id)
+          if (found) return found
         }
-        const parent = findNode(tree, sessionId)
-        if (parent) {
-          const forkLabel = _input.slice(0, 12)
-          parent.children.push({
-            id: `fork-${++idCounter}`,
-            label: forkLabel,
-            status: 'active',
-            turnCount: 0,
-            children: [],
-          })
-          splitNote = `\n\n✦ 话题分裂：已创建新节点「${forkLabel}」，可在拓扑图中点击进入。`
-        }
+        return null
+      }
+      const parent = findNode(tree, sessionId)
+      if (parent) {
+        parent.children.push({
+          id: `fork-${++idCounter}`,
+          label: forkLabel,
+          status: 'active',
+          turnCount: 0,
+          children: [],
+        })
       }
     }
-    // 随机注入跨节点洞察提示
-    let insightNote = ''
-    if (Math.random() > 0.75) {
-      const crossInsights = [
-        '⚡ 主节点发现：该讨论与其他节点的内容存在关联，建议对齐。',
-        '💡 全局洞察：当前讨论的方向可以为其他节点提供支撑。',
-      ]
-      insightNote = '\n\n' + crossInsights[Math.floor(Math.random() * crossInsights.length)]
-    }
-    return { response: reply + splitNote + insightNote, records: [] }
+    const reply = `好的，识别到新话题，正在分裂出新节点...\n\n✦ 话题分裂：已创建新节点「${forkLabel}」，可在拓扑图中点击进入。`
+    return { response: reply, records: [] }
   }
   return request(`/spaces/${spaceId}/sessions/${sessionId}/turn`, {
     method: 'POST',

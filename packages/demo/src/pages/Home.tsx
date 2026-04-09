@@ -196,14 +196,28 @@ function timeAgo(dateStr: string): string {
 }
 
 // 便签卡片样式变体
-const ROTATIONS = ['-1.2deg', '0.8deg', '-0.6deg', '1.1deg', '-0.4deg', '0.9deg']
+const ROTATIONS = [
+  '-1.2deg',
+  '0.8deg',
+  '-0.6deg',
+  '1.1deg',
+  '-0.4deg',
+  '0.9deg'
+]
 const WOBBLY_RADII = [
-  '15px 25px 20px 10px', '20px 15px 25px 12px', '12px 20px 15px 25px',
-  '25px 12px 18px 15px', '18px 22px 12px 20px', '14px 18px 22px 16px',
+  '15px 25px 20px 10px',
+  '20px 15px 25px 12px',
+  '12px 20px 15px 25px',
+  '25px 12px 18px 15px',
+  '18px 22px 12px 20px',
+  '14px 18px 22px 16px'
 ]
 const TAPE_ROTATIONS = ['-2deg', '1.5deg', '-3deg', '2deg', '-1deg', '3deg']
 
-function stickyStyle(idx: number, extra?: React.CSSProperties): React.CSSProperties {
+function stickyStyle(
+  idx: number,
+  extra?: React.CSSProperties
+): React.CSSProperties {
   return {
     padding: '24px 28px 32px',
     background: '#FFF9C4',
@@ -211,7 +225,7 @@ function stickyStyle(idx: number, extra?: React.CSSProperties): React.CSSPropert
     borderRadius: WOBBLY_RADII[idx % WOBBLY_RADII.length],
     boxShadow: '4px 4px 0 rgba(45,45,45,0.08)',
     transform: `rotate(${ROTATIONS[idx % ROTATIONS.length]})`,
-    ...extra,
+    ...extra
   }
 }
 
@@ -748,162 +762,162 @@ export function Home() {
                   </p>
                 )}
                 {spaces.map((space, idx) => (
-                    <div
-                      key={space.id}
-                      onClick={() => navigate(`/space/${space.id}`)}
-                      onContextMenu={(e) => handleContextMenu(e, space)}
-                      className="sticky-note tape-top relative cursor-pointer transition-transform hover:scale-[1.03] group"
-                      style={stickyStyle(idx, { minHeight: 200 })}
-                    >
-                      <span className="tape" style={{ transform: `translateX(-50%) rotate(${TAPE_ROTATIONS[idx % TAPE_ROTATIONS.length]})` }} />
-                      {/* Emoji + 标题 */}
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-[24px]">{space.emoji}</span>
-                        <h3
-                          className="text-[24px] font-semibold"
-                          style={{
-                            ...handFont,
-                            color: 'var(--color-blue-pen)'
-                          }}
-                        >
-                          {space.label}
-                        </h3>
-                      </div>
-                      {/* 模式标签 + 来源 */}
-                      <div className="flex items-center gap-2 mb-2">
+                  <div
+                    key={space.id}
+                    onClick={() => navigate(`/space/${space.id}`)}
+                    onContextMenu={(e) => handleContextMenu(e, space)}
+                    className="sticky-note tape-top relative cursor-pointer transition-transform hover:scale-[1.03] group"
+                    style={stickyStyle(idx, { minHeight: 200 })}
+                  >
+                    <span
+                      className="tape"
+                      style={{
+                        transform: `translateX(-50%) rotate(${TAPE_ROTATIONS[idx % TAPE_ROTATIONS.length]})`
+                      }}
+                    />
+                    {/* Emoji + 标题 */}
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-[24px]">{space.emoji}</span>
+                      <h3
+                        className="text-[24px] font-semibold"
+                        style={{
+                          ...handFont,
+                          color: 'var(--color-blue-pen)'
+                        }}
+                      >
+                        {space.label}
+                      </h3>
+                    </div>
+                    {/* 模式标签 + 来源 */}
+                    <div className="flex items-center gap-2 mb-2">
+                      <span
+                        className="px-2 py-0.5 rounded-full"
+                        style={{
+                          ...handSm,
+                          fontSize: 11,
+                          background:
+                            space.mode === 'AUTO'
+                              ? 'rgba(58,107,197,0.1)'
+                              : 'rgba(201,74,74,0.1)',
+                          color:
+                            space.mode === 'AUTO'
+                              ? 'var(--color-blue-pen)'
+                              : 'var(--color-red-pen)',
+                          border: `1px solid ${space.mode === 'AUTO' ? 'rgba(58,107,197,0.2)' : 'rgba(201,74,74,0.2)'}`
+                        }}
+                      >
+                        {space.mode}
+                      </span>
+                      {space.sourceKitId && (
                         <span
-                          className="px-2 py-0.5 rounded-full"
                           style={{
                             ...handSm,
                             fontSize: 11,
-                            background:
-                              space.mode === 'AUTO'
-                                ? 'rgba(58,107,197,0.1)'
-                                : 'rgba(201,74,74,0.1)',
-                            color:
-                              space.mode === 'AUTO'
-                                ? 'var(--color-blue-pen)'
-                                : 'var(--color-red-pen)',
-                            border: `1px solid ${space.mode === 'AUTO' ? 'rgba(58,107,197,0.2)' : 'rgba(201,74,74,0.2)'}`
+                            color: 'var(--color-pencil)'
                           }}
                         >
-                          {space.mode}
+                          from template
                         </span>
-                        {space.sourceKitId && (
-                          <span
-                            style={{
-                              ...handSm,
-                              fontSize: 11,
-                              color: 'var(--color-pencil)'
-                            }}
-                          >
-                            from template
-                          </span>
-                        )}
-                      </div>
-                      {space.description && (
-                        <p
-                          className="mb-3 line-clamp-2"
-                          style={{
-                            ...handAlt,
-                            fontSize: 15,
-                            color: 'var(--color-ink)',
-                            lineHeight: 1.6
-                          }}
-                        >
-                          {space.description}
-                        </p>
                       )}
-                      {/* 拓扑节点标签 */}
-                      {spaceTrees[space.id] &&
-                        spaceTrees[space.id].length > 0 && (
-                          <div className="flex flex-wrap gap-1.5 mb-3">
-                            {collectNodeLabels(spaceTrees[space.id]).map(
-                              (label, i) => (
-                                <span
-                                  key={i}
-                                  className="px-2 py-0.5 rounded-full"
-                                  style={{
-                                    ...handSm,
-                                    fontSize: 12,
-                                    background:
-                                      i === 0
-                                        ? 'rgba(58,107,197,0.12)'
-                                        : 'rgba(42,42,42,0.06)',
-                                    color:
-                                      i === 0
-                                        ? 'var(--color-blue-pen)'
-                                        : 'var(--color-ink)',
-                                    border: `1px solid ${i === 0 ? 'rgba(58,107,197,0.2)' : 'rgba(42,42,42,0.08)'}`
-                                  }}
-                                >
-                                  {label}
-                                </span>
-                              )
-                            )}
-                            {countNodes(spaceTrees[space.id]) > 6 && (
+                    </div>
+                    {space.description && (
+                      <p
+                        className="mb-3 line-clamp-2"
+                        style={{
+                          ...handAlt,
+                          fontSize: 15,
+                          color: 'var(--color-ink)',
+                          lineHeight: 1.6
+                        }}
+                      >
+                        {space.description}
+                      </p>
+                    )}
+                    {/* 拓扑节点标签 */}
+                    {spaceTrees[space.id] &&
+                      spaceTrees[space.id].length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mb-3">
+                          {collectNodeLabels(spaceTrees[space.id]).map(
+                            (label, i) => (
                               <span
+                                key={i}
                                 className="px-2 py-0.5 rounded-full"
                                 style={{
                                   ...handSm,
                                   fontSize: 12,
-                                  color: 'var(--color-pencil)'
-                                }}
-                              >
-                                +{countNodes(spaceTrees[space.id]) - 6}
-                              </span>
-                            )}
-                          </div>
-                        )}
-                      {/* 底部信息 */}
-                      <div
-                        className="flex items-center gap-3"
-                        style={{
-                          ...handSm,
-                          fontSize: 13,
-                          color: 'var(--color-pencil)'
-                        }}
-                      >
-                        <span>{timeAgo(space.lastActiveAt)}</span>
-                        {spaceTrees[space.id] && (
-                          <span>
-                            · {countNodes(spaceTrees[space.id])} 个节点
-                          </span>
-                        )}
-                        {spaceTrees[space.id] &&
-                          (() => {
-                            const progress = countActivation(
-                              spaceTrees[space.id]
-                            )
-                            if (!progress) return null
-                            return (
-                              <span
-                                style={{
+                                  background:
+                                    i === 0
+                                      ? 'rgba(58,107,197,0.12)'
+                                      : 'rgba(42,42,42,0.06)',
                                   color:
-                                    progress.activated >= progress.total
-                                      ? 'var(--color-green-hl)'
-                                      : 'var(--color-blue-pen)'
+                                    i === 0
+                                      ? 'var(--color-blue-pen)'
+                                      : 'var(--color-ink)',
+                                  border: `1px solid ${i === 0 ? 'rgba(58,107,197,0.2)' : 'rgba(42,42,42,0.08)'}`
                                 }}
                               >
-                                · {progress.activated}/{progress.total} 已完成
+                                {label}
                               </span>
                             )
-                          })()}
-                      </div>
-                      {/* 更多按钮 */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleContextMenu(e, space)
-                        }}
-                        className="absolute top-3 right-3 opacity-0 group-hover:opacity-60 transition-opacity bg-transparent border-none cursor-pointer p-1"
-                        style={{ color: 'var(--color-ink)' }}
-                      >
-                        <MoreHorizontal size={18} strokeWidth={1.5} />
-                      </button>
+                          )}
+                          {countNodes(spaceTrees[space.id]) > 6 && (
+                            <span
+                              className="px-2 py-0.5 rounded-full"
+                              style={{
+                                ...handSm,
+                                fontSize: 12,
+                                color: 'var(--color-pencil)'
+                              }}
+                            >
+                              +{countNodes(spaceTrees[space.id]) - 6}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    {/* 底部信息 */}
+                    <div
+                      className="flex items-center gap-3"
+                      style={{
+                        ...handSm,
+                        fontSize: 13,
+                        color: 'var(--color-pencil)'
+                      }}
+                    >
+                      <span>{timeAgo(space.lastActiveAt)}</span>
+                      {spaceTrees[space.id] && (
+                        <span>· {countNodes(spaceTrees[space.id])} 个节点</span>
+                      )}
+                      {spaceTrees[space.id] &&
+                        (() => {
+                          const progress = countActivation(spaceTrees[space.id])
+                          if (!progress) return null
+                          return (
+                            <span
+                              style={{
+                                color:
+                                  progress.activated >= progress.total
+                                    ? 'var(--color-green-hl)'
+                                    : 'var(--color-blue-pen)'
+                              }}
+                            >
+                              · {progress.activated}/{progress.total} 已完成
+                            </span>
+                          )
+                        })()}
                     </div>
-                  )
-                )}
+                    {/* 更多按钮 */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleContextMenu(e, space)
+                      }}
+                      className="absolute top-3 right-3 opacity-0 group-hover:opacity-60 transition-opacity bg-transparent border-none cursor-pointer p-1"
+                      style={{ color: 'var(--color-ink)' }}
+                    >
+                      <MoreHorizontal size={18} strokeWidth={1.5} />
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -919,89 +933,93 @@ export function Home() {
               }}
             >
               {marketKits.map((kit, idx) => (
-                  <div
-                    key={kit.id}
-                    className="sticky-note tape-top relative flex flex-col overflow-hidden transition-transform hover:scale-[1.03]"
-                    style={stickyStyle(idx, { minHeight: 200 })}
-                  >
-                    <span className="tape" style={{ transform: `translateX(-50%) rotate(${TAPE_ROTATIONS[idx % TAPE_ROTATIONS.length]})` }} />
-                    <div className="flex items-start justify-between gap-3 mb-2">
-                      <h3
-                        className="text-[20px] font-semibold"
-                        style={{ ...handFont, color: 'var(--color-blue-pen)' }}
-                      >
-                        {kit.label}
-                      </h3>
-                      <div className="flex gap-1.5 shrink-0 mt-1">
-                        {kit.tags.map((tag) => (
-                          <span
-                            key={tag}
-                            className="px-2 py-0.5 rounded-full"
-                            style={{
-                              ...handSm,
-                              fontSize: 11,
-                              lineHeight: '16px',
-                              background:
-                                tag === 'AUTO'
-                                  ? 'rgba(58,107,197,0.1)'
-                                  : tag === 'PRO'
-                                    ? 'rgba(201,74,74,0.1)'
-                                    : 'rgba(42,42,42,0.06)',
-                              color:
-                                tag === 'AUTO'
-                                  ? 'var(--color-blue-pen)'
-                                  : tag === 'PRO'
-                                    ? 'var(--color-red-pen)'
-                                    : 'var(--color-ink)',
-                              border: `1px solid ${tag === 'AUTO' ? 'rgba(58,107,197,0.2)' : tag === 'PRO' ? 'rgba(201,74,74,0.2)' : 'rgba(42,42,42,0.1)'}`
-                            }}
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                    <p
-                      className="mb-4"
-                      style={{
-                        ...handAlt,
-                        fontSize: 16,
-                        color: 'var(--color-ink)',
-                        lineHeight: 1.5
-                      }}
+                <div
+                  key={kit.id}
+                  className="sticky-note tape-top relative flex flex-col overflow-hidden transition-transform hover:scale-[1.03]"
+                  style={stickyStyle(idx, { minHeight: 200 })}
+                >
+                  <span
+                    className="tape"
+                    style={{
+                      transform: `translateX(-50%) rotate(${TAPE_ROTATIONS[idx % TAPE_ROTATIONS.length]})`
+                    }}
+                  />
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <h3
+                      className="text-[20px] font-semibold"
+                      style={{ ...handFont, color: 'var(--color-blue-pen)' }}
                     >
-                      {kit.description}
-                    </p>
-                    <div
-                      className="flex flex-col gap-3 mt-auto pt-2"
-                      style={{ borderTop: '1px dashed rgba(42,42,42,0.12)' }}
-                    >
-                      <span
-                        style={{
-                          ...handSm,
-                          fontSize: 13,
-                          color: 'var(--color-pencil)'
-                        }}
-                      >
-                        by {kit.author} · {kit.forks} forks
-                      </span>
-                      <button
-                        onClick={() => openFork(kit)}
-                        className="flex items-center justify-center gap-2 w-full py-3 rounded-md cursor-pointer transition-transform hover:scale-[1.02] active:scale-[0.98] border-none"
-                        style={{
-                          ...handFont,
-                          fontSize: 18,
-                          background: 'var(--color-blue-pen)',
-                          color: '#fff'
-                        }}
-                      >
-                        <GitFork size={16} />
-                        Fork
-                      </button>
+                      {kit.label}
+                    </h3>
+                    <div className="flex gap-1.5 shrink-0 mt-1">
+                      {kit.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="px-2 py-0.5 rounded-full"
+                          style={{
+                            ...handSm,
+                            fontSize: 11,
+                            lineHeight: '16px',
+                            background:
+                              tag === 'AUTO'
+                                ? 'rgba(58,107,197,0.1)'
+                                : tag === 'PRO'
+                                  ? 'rgba(201,74,74,0.1)'
+                                  : 'rgba(42,42,42,0.06)',
+                            color:
+                              tag === 'AUTO'
+                                ? 'var(--color-blue-pen)'
+                                : tag === 'PRO'
+                                  ? 'var(--color-red-pen)'
+                                  : 'var(--color-ink)',
+                            border: `1px solid ${tag === 'AUTO' ? 'rgba(58,107,197,0.2)' : tag === 'PRO' ? 'rgba(201,74,74,0.2)' : 'rgba(42,42,42,0.1)'}`
+                          }}
+                        >
+                          {tag}
+                        </span>
+                      ))}
                     </div>
                   </div>
-                )
-              )}
+                  <p
+                    className="mb-4"
+                    style={{
+                      ...handAlt,
+                      fontSize: 16,
+                      color: 'var(--color-ink)',
+                      lineHeight: 1.5
+                    }}
+                  >
+                    {kit.description}
+                  </p>
+                  <div
+                    className="flex flex-col gap-3 mt-auto pt-2"
+                    style={{ borderTop: '1px dashed rgba(42,42,42,0.12)' }}
+                  >
+                    <span
+                      style={{
+                        ...handSm,
+                        fontSize: 13,
+                        color: 'var(--color-pencil)'
+                      }}
+                    >
+                      by {kit.author} · {kit.forks} forks
+                    </span>
+                    <button
+                      onClick={() => openFork(kit)}
+                      className="flex items-center justify-center gap-2 w-full py-3 rounded-md cursor-pointer transition-transform hover:scale-[1.02] active:scale-[0.98] border-none"
+                      style={{
+                        ...handFont,
+                        fontSize: 18,
+                        background: 'var(--color-blue-pen)',
+                        color: '#fff'
+                      }}
+                    >
+                      <GitFork size={16} />
+                      Fork
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -1040,71 +1058,70 @@ export function Home() {
             ) : (
               <div className="flex flex-col gap-5 ">
                 {published.map((kit, idx) => (
-                    <div
-                      key={kit.id}
-                      className="sticky-note tape-top relative flex items-center gap-6 cursor-pointer transition-transform hover:scale-[1.02]"
-                      style={stickyStyle(idx, { padding: '24px 28px' })}
-                    >
-                      <div className="tape" />
-                      <div className="flex-1 min-w-0">
-                        <h3
-                          className="text-[18px] font-semibold mb-1"
-                          style={{
-                            ...handFont,
-                            color: 'var(--color-blue-pen)'
-                          }}
-                        >
-                          {kit.label}
-                        </h3>
-                        <p
-                          className="truncate"
-                          style={{
-                            ...handAlt,
-                            fontSize: 16,
-                            color: 'var(--color-ink)'
-                          }}
-                        >
-                          {kit.description}
-                        </p>
-                      </div>
-                      <div
-                        className="shrink-0 text-right"
+                  <div
+                    key={kit.id}
+                    className="sticky-note tape-top relative flex items-center gap-6 cursor-pointer transition-transform hover:scale-[1.02]"
+                    style={stickyStyle(idx, { padding: '24px 28px' })}
+                  >
+                    <div className="tape" />
+                    <div className="flex-1 min-w-0">
+                      <h3
+                        className="text-[18px] font-semibold mb-1"
                         style={{
-                          ...handSm,
-                          fontSize: 12,
-                          color: 'var(--color-pencil)'
+                          ...handFont,
+                          color: 'var(--color-blue-pen)'
                         }}
                       >
-                        <div>{kit.forks} forks</div>
-                        <div>
-                          {new Date(kit.publishedAt).toLocaleDateString()}
-                        </div>
-                      </div>
-                      <div className="flex gap-1 shrink-0">
-                        {kit.tags.map((tag) => (
-                          <span
-                            key={tag}
-                            className="px-2 py-0.5 rounded-full text-xs"
-                            style={{
-                              ...handSm,
-                              fontSize: 11,
-                              background:
-                                tag === 'AUTO'
-                                  ? 'rgba(58,107,197,0.1)'
-                                  : 'rgba(201,74,74,0.1)',
-                              color:
-                                tag === 'AUTO'
-                                  ? 'var(--color-blue-pen)'
-                                  : 'var(--color-red-pen)'
-                            }}
-                          >
-                            {tag}
-                          </span>
-                        ))}
+                        {kit.label}
+                      </h3>
+                      <p
+                        className="truncate"
+                        style={{
+                          ...handAlt,
+                          fontSize: 16,
+                          color: 'var(--color-ink)'
+                        }}
+                      >
+                        {kit.description}
+                      </p>
+                    </div>
+                    <div
+                      className="shrink-0 text-right"
+                      style={{
+                        ...handSm,
+                        fontSize: 12,
+                        color: 'var(--color-pencil)'
+                      }}
+                    >
+                      <div>{kit.forks} forks</div>
+                      <div>
+                        {new Date(kit.publishedAt).toLocaleDateString()}
                       </div>
                     </div>
-                  )
-                )}
+                    <div className="flex gap-1 shrink-0">
+                      {kit.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="px-2 py-0.5 rounded-full text-xs"
+                          style={{
+                            ...handSm,
+                            fontSize: 11,
+                            background:
+                              tag === 'AUTO'
+                                ? 'rgba(58,107,197,0.1)'
+                                : 'rgba(201,74,74,0.1)',
+                            color:
+                              tag === 'AUTO'
+                                ? 'var(--color-blue-pen)'
+                                : 'var(--color-red-pen)'
+                          }}
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -1618,7 +1635,7 @@ export function Home() {
                       borderBottom: '1.5px dashed rgba(58,107,197,0.2)'
                     }}
                   >
-                    模型配置
+                    高级配置
                   </h3>
 
                   <label

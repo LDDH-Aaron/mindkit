@@ -75,8 +75,8 @@ export function TopoCanvas({
     knownNodeIds.current = currentIds
     if (fresh.size > 0) {
       setNewNodeIds(fresh)
-      // 动画结束后清除
-      setTimeout(() => setNewNodeIds(new Set()), 600)
+      // 动画结束后移交 Canvas（线 1s + 标签 0.5s）
+      setTimeout(() => setNewNodeIds(new Set()), 1500)
     }
   }, [tree])
 
@@ -122,8 +122,9 @@ export function TopoCanvas({
 
     const nodeMap = new Map(nodes.map((n) => [n.id, n]))
 
-    // 绘制实线：parent-child 直接关联
+    // 绘制实线：parent-child 直接关联（跳过正在动画的新节点）
     for (const node of nodes) {
+      if (newNodeIds.has(node.id)) continue
       if (node.parentId) {
         const parent = nodeMap.get(node.parentId)
         if (parent) {
@@ -175,12 +176,12 @@ export function TopoCanvas({
       }
     }
 
-    // 绘制节点（核心节点更大更醒目，inactive 节点半透明，亮度映射活跃度）
+    // 绘制节点（跳过正在动画的新节点）
     for (const node of nodes) {
+      if (newNodeIds.has(node.id)) continue
       const isActive = activeNodeId === node.id
       const isHovered = hoveredId === node.id
       const isInactive = node.activationStatus === 'inactive'
-      // 亮度映射：turnCount 越高越亮（0.5 ~ 1.0 范围）
       const tc = turnCountMap.current.get(node.id) || 0
       const activityAlpha = Math.min(1, 0.5 + tc * 0.1)
       const baseAlpha = isInactive
@@ -200,8 +201,9 @@ export function TopoCanvas({
       )
     }
 
-    // 绘制标签
+    // 绘制标签（跳过正在动画的新节点）
     for (const node of nodes) {
+      if (newNodeIds.has(node.id)) continue
       const isActive = activeNodeId === node.id
       const isCore = !node.parentId
       const isInactive = node.activationStatus === 'inactive'
@@ -222,7 +224,7 @@ export function TopoCanvas({
     }
 
     ctx.restore() // 恢复平移
-  }, [nodes, hoveredId, activeNodeId, pan])
+  }, [nodes, hoveredId, activeNodeId, pan, newNodeIds])
 
   useEffect(() => {
     render()
@@ -338,24 +340,81 @@ export function TopoCanvas({
         }}
       />
 
-      {/* 新节点分裂动画 */}
+      {/* 新节点生长动画 —— 线条缓慢延伸 → 节点浮现 */}
       {Array.from(newNodeIds).map((id) => {
         const node = nodes.find((n) => n.id === id)
         if (!node) return null
+        const cx = node.x + pan.x
+        const cy = node.y + pan.y
+        const parent = node.parentId
+          ? nodes.find((n) => n.id === node.parentId)
+          : null
+        const px = parent ? parent.x + pan.x : cx
+        const py = parent ? parent.y + pan.y : cy
+        const dx = cx - px
+        const dy = cy - py
+        const lineLen = Math.sqrt(dx * dx + dy * dy)
+        const lineDur = 1000   // 线生长时长 ms
+        const labelDelay = 800 // 标签在线快到终点时浮现
         return (
           <div
             key={`anim-${id}`}
-            className="absolute pointer-events-none z-10"
-            style={{
-              left: node.x + pan.x - 24,
-              top: node.y + pan.y - 24,
-              width: 48,
-              height: 48,
-              borderRadius: '50%',
-              border: `2px solid ${node.color}`,
-              animation: 'nodeSpawn 0.6s ease-out forwards'
-            }}
-          />
+            className="pointer-events-none z-20"
+            style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: '100%' }}
+          >
+            {/* 连线从父节点缓慢生长到子节点 */}
+            {parent && lineLen > 0 && (
+              <svg
+                className="absolute inset-0 w-full h-full pointer-events-none"
+                style={{ overflow: 'visible' }}
+              >
+                <line
+                  x1={px} y1={py} x2={cx} y2={cy}
+                  stroke={node.color}
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  ref={(el) => {
+                    if (!el) return
+                    el.setAttribute('stroke-dasharray', String(lineLen))
+                    el.setAttribute('stroke-dashoffset', String(lineLen))
+                    el.animate(
+                      [
+                        { strokeDashoffset: lineLen, opacity: 0.2 },
+                        { strokeDashoffset: 0, opacity: 0.45 }
+                      ],
+                      { duration: lineDur, easing: 'cubic-bezier(0.25, 0.1, 0.25, 1)', fill: 'forwards' }
+                    )
+                  }}
+                />
+              </svg>
+            )}
+            {/* 标签浮现（线到达后） */}
+            <div
+              ref={(el) => {
+                if (!el) return
+                el.animate(
+                  [
+                    { opacity: 0, transform: 'translateY(4px)' },
+                    { opacity: 1, transform: 'translateY(0)' }
+                  ],
+                  { duration: 500, delay: labelDelay, easing: 'ease-out', fill: 'forwards' }
+                )
+              }}
+              style={{
+                position: 'absolute',
+                left: cx - 60,
+                top: cy + node.r + 4,
+                width: 120,
+                textAlign: 'center',
+                fontFamily: '"Caveat", cursive',
+                fontSize: 14,
+                color: 'rgba(34,34,34,0.5)',
+                opacity: 0
+              }}
+            >
+              {node.label || node.id.slice(0, 6)}
+            </div>
+          </div>
         )
       })}
 

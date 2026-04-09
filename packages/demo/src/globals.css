@@ -125,21 +125,7 @@ body::before {
   to { opacity: 1; }
 }
 
-/* 新节点分裂动画 */
-@keyframes nodeSpawn {
-  0% {
-    transform: scale(0.2);
-    opacity: 1;
-  }
-  60% {
-    transform: scale(1.8);
-    opacity: 0.5;
-  }
-  100% {
-    transform: scale(2.5);
-    opacity: 0;
-  }
-}
+/* （新节点生长动画由 Web Animations API 在 TopoCanvas 中驱动） */
 
 /* 页面淡入 */
 @keyframes fadeIn {
