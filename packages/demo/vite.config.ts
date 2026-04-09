@@ -7,18 +7,18 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
-      '@': resolve(__dirname, './src'),
-    },
+      '@': resolve(__dirname, './src')
+    }
   },
   server: {
     port: 5180,
     proxy: {
       '/api': 'http://localhost:4800',
-      '/ws': { target: 'ws://localhost:4800', ws: true },
-    },
+      '/ws': { target: 'ws://localhost:4800', ws: true }
+    }
   },
   build: {
     outDir: 'dist',
-    emptyOutDir: true,
-  },
+    emptyOutDir: true
+  }
 })

@@ -52,7 +52,10 @@ export interface Insight {
 export interface SessionTreeNode {
   id: string
   label: string
+  /** 跨分支关联（蓝色虚线） */
   sourceSessionId?: string
+  /** 跨分支矛盾（红色虚线） */
+  conflictSessionId?: string
   status: 'active' | 'archived'
   /** 模板模式下的激活状态 */
   activationStatus?: 'activated' | 'inactive' | 'user-extended'
@@ -72,6 +75,8 @@ export interface TurnRecord {
 export interface TurnResult {
   response: string
   records: TurnRecord[]
+  /** 系统级通知（关联/矛盾发现等），作为单独消息展示 */
+  systemNotices?: string[]
 }
 
 export interface MarketKit {
@@ -102,33 +107,10 @@ let mockSpaces: Space[] = [
 ]
 
 const mockTrees: Record<string, SessionTreeNode[]> = {
-  // ── Space 1: AI 产品头脑风暴 ──
+  // ── Space 1: AI 产品头脑风暴（演示用，初始只有根节点，对话后逐步生长）──
   'sp-1': [
     {
-      id: 's1-main', label: '核心构思', status: 'active', turnCount: 5, children: [
-        {
-          id: 's1-ux', label: 'UX 设计', status: 'active', turnCount: 4, children: [
-            { id: 's1-ux-mobile', label: '移动端适配', status: 'active', turnCount: 2, children: [] },
-            { id: 's1-ux-a11y', label: '无障碍方案', status: 'active', turnCount: 1, children: [] },
-          ],
-        },
-        {
-          id: 's1-backend', label: '后端架构', status: 'active', turnCount: 3, sourceSessionId: 's1-ux', children: [
-            { id: 's1-db', label: '数据模型', status: 'active', turnCount: 2, children: [] },
-            {
-              id: 's1-api', label: 'API 设计', status: 'active', turnCount: 2, sourceSessionId: 's1-ux-mobile', children: [
-                { id: 's1-api-auth', label: '鉴权方案', status: 'active', turnCount: 1, children: [] },
-              ],
-            },
-          ],
-        },
-        {
-          id: 's1-ai', label: 'AI 能力', status: 'active', turnCount: 3, children: [
-            { id: 's1-ai-rag', label: 'RAG 检索', status: 'active', turnCount: 2, sourceSessionId: 's1-db', children: [] },
-            { id: 's1-ai-agent', label: 'Agent 编排', status: 'active', turnCount: 1, children: [] },
-          ],
-        },
-      ],
+      id: 's1-main', label: 'MindKit', status: 'active', turnCount: 1, children: [],
     },
   ],
   // ── Space 2: 技术架构评审 ──
@@ -149,9 +131,9 @@ const mockTrees: Record<string, SessionTreeNode[]> = {
           ],
         },
         {
-          id: 's2-perf', label: '性能优化', status: 'active', turnCount: 2, sourceSessionId: 's2-micro-mq', children: [
+          id: 's2-perf', label: '性能优化', status: 'active', turnCount: 2, sourceSessionId: 's2-micro-mq', conflictSessionId: 's2-micro', children: [
             { id: 's2-perf-cache', label: '缓存策略', status: 'active', turnCount: 1, children: [] },
-            { id: 's2-perf-db', label: 'DB 调优', status: 'active', turnCount: 1, children: [] },
+            { id: 's2-perf-db', label: 'DB 调优', status: 'active', turnCount: 1, conflictSessionId: 's2-infra-k8s', children: [] },
           ],
         },
       ],
@@ -190,17 +172,26 @@ const mockTrees: Record<string, SessionTreeNode[]> = {
 /** Mock L2 内容 */
 const mockL2: Record<string, string> = {
   // Space 1
-  's1-main': '总协调节点：统筹 UX、后端、AI 三条探索线，追踪产品核心定位和架构决策。',
-  's1-ux': '探索 UI 布局方案、组件层级和视觉风格，输出设计规范供后端和 AI 线参考。',
-  's1-ux-mobile': '移动端响应式适配策略，包括触摸交互、离线缓存和 PWA 方案。',
-  's1-ux-a11y': '无障碍访问设计：屏幕阅读器兼容、键盘导航、高对比度模式。',
-  's1-backend': '后端服务架构设计，引用 UX 线的接口需求定义 API 契约。',
-  's1-db': '数据模型设计：核心实体关系、索引策略、分库分表方案。',
-  's1-api': 'RESTful API 设计，结合移动端需求做字段裁剪和分页优化。',
-  's1-api-auth': 'JWT + OAuth2.0 鉴权方案，支持多端登录和权限分级。',
-  's1-ai': 'AI 能力规划：RAG 检索增强、Agent 多步编排、模型选型。',
-  's1-ai-rag': 'RAG 方案设计：向量库选型、chunk 策略、引用数据模型的 embedding 方案。',
-  's1-ai-agent': 'Agent 编排框架：工具调用协议、多轮对话状态机、错误恢复。',
+  's1-main': 'MindKit 总览：用 AI 驱动的思维拓扑工具规划自身的商业化落地，涵盖产品定位、核心功能、技术架构、商业化和落地计划五条主线。',
+  's1-pos': '产品定位确定为"AI-native thinking partner"，核心差异化在于动态拓扑 + AI 驱动分裂，面向独立开发者和小团队负责人。',
+  's1-user': '目标用户聚焦独立开发者：25-35 岁全栈工程师，月付费意愿 $15-25，核心痛点是多角色切换时思维碎片化。',
+  's1-comp': '竞品包括 ChatGPT（线性对话）、Notion AI（文档嵌入）、Miro（可视化画布）、Cursor（代码场景），均缺少动态拓扑 + AI 分裂能力。',
+  's1-diff': '差异化定位："AI-driven thinking topology"——唯一同时具备对话拓扑、AI 自动分裂、跨节点洞察的产品，数据护城河来自用户积累的思维模式。',
+  's1-feat': '核心功能优先级排序：对话拓扑引擎 > AI 自动分裂 > 跨节点洞察，交互模型为 Chat + Canvas 双面板。',
+  's1-topo': '对话拓扑引擎基于 Session Tree 实现，Canvas 渲染 + 力导向布局，支持懒加载和视口裁剪以保证大规模节点下的性能。',
+  's1-split': 'AI 自动分裂通过 LLM 检测话题漂移触发，置信度阈值 > 0.7 时建议分裂，与拓扑引擎深度耦合需同步迭代。',
+  's1-insight': '跨节点洞察通过 L1/L2/L3 三层记忆架构实现：L3 原始对话 → L2 节点摘要 → L1 全局语义比对，自动发现关联和矛盾。',
+  's1-arch': '技术架构选型 TypeScript + pnpm monorepo + Hono 后端，核心约束是本地优先，存在本地 vs 云端的长期张力。',
+  's1-local': '本地优先存储采用文件系统持久化方案，优势是零依赖和可 git 管理，但与未来云端同步功能存在架构矛盾。',
+  's1-llm': 'LLM 接入层采用 provider-agnostic 抽象，支持 Claude/GPT/本地模型切换，通过 token 预算控制每节点调用成本。',
+  's1-deploy': '部署方案采用 local-first + optional cloud sync 的 hybrid 路径，在本地存储原则和云端同步需求之间取得平衡。',
+  's1-biz': '商业化路径以独立开发者为起点，先通过免费版验证核心价值，再导入 Pro/Team 付费层级，采用 open-core 模式。',
+  's1-price': '定价策略 Free/Pro/Team 三档：免费版限 3 Space + 50 节点 + 基础模型，Pro $19/月，Team $39/人/月。',
+  's1-oss': '开源社区采用 open-core 模式：核心拓扑引擎开源获取分发优势，高级洞察和团队协作功能作为付费闭源模块。',
+  's1-growth': '增长飞轮：开源社区 → 模板分享（Market）→ 用户沉淀思维数据 → 网络效应，关键留存靠积累的思维拓扑不可迁移。',
+  's1-mvp': '极简 MVP 范围：单 Space + 基础拓扑 + 手动分裂 + 单模型，砍掉 Market、跨节点洞察和多模型，4 周冲刺完成核心循环。',
+  's1-plan': '落地计划分三阶段：4 周 MVP → 8 周 beta（加入 Market 和洞察）→ 正式上线，最小团队 3 人。',
+  's1-roadmap': '上线路线图：W1-4 MVP → W5-8 内测 → W9 ProductHunt + HackerNews launch，成功指标 DAU 500 / 日均 Space 创建 50 / 7 日留存 40%。',
   // Space 2
   's2-main': '架构评审总览：梳理现有系统痛点，规划微服务化路径和基础设施升级。',
   's2-micro': '微服务拆分策略：领域边界划分、服务通信协议、数据一致性方案。',
@@ -229,56 +220,168 @@ const mockL2: Record<string, string> = {
 
 /** Mock L3 对话记录 */
 const mockMessages: Record<string, TurnRecord[]> = {
-  // ── Space 1: AI 产品头脑风暴 ──
+  // ── Space 1: AI 产品头脑风暴（MindKit 商业化落地规划）──
   's1-main': [
-    { role: 'user', content: '我想做一个 AI Native 的思维协作工具，核心理念是让 AI 参与到思考过程而不只是问答', timestamp: '2026-04-08T09:00:00Z' },
-    { role: 'assistant', content: '很棒的方向！AI Native 协作工具的关键在于：1) 思维的结构化——用拓扑图而非线性对话；2) AI 的主动性——不只回答问题，还能主动发现关联和提出建议；3) 多线程探索——允许思维分叉并行深入。', timestamp: '2026-04-08T09:01:00Z' },
-    { role: 'user', content: '对，我设计了一个 session tree 的概念，每个节点是一个独立对话，节点之间有关联', timestamp: '2026-04-08T09:02:00Z' },
-    { role: 'assistant', content: '这正是 Stello SDK 的核心模型。建议分三条线并行探索：UX 设计（交互怎么呈现拓扑）、后端架构（session tree 如何持久化和同步）、AI 能力（如何实现跨节点的意识和记忆）。', timestamp: '2026-04-08T09:03:00Z' },
+    { role: 'user', content: '我想用 MindKit 来规划 MindKit 自己的商业化落地，算是 dogfooding 了', timestamp: '2026-04-09T09:00:00Z' },
+    { role: 'assistant', content: '这是最好的验证方式！用自己的产品规划自己的未来。MindKit 的核心概念是"思维拓扑"——让 AI 对话不再是线性的问答，而是可以分裂、关联、发现矛盾的树状结构。', timestamp: '2026-04-09T09:01:00Z' },
+    { role: 'user', content: '思维拓扑和思维导图有什么本质区别？', timestamp: '2026-04-09T09:02:00Z' },
+    { role: 'assistant', content: '思维导图是静态的、人工组织的；而 MindKit 的拓扑是动态的、AI 驱动的。每个节点都是一段活的对话，AI 能自动检测话题漂移并建议分裂，还能跨节点发现关联和矛盾。这不是画图工具，是思考伙伴。', timestamp: '2026-04-09T09:03:00Z' },
+    { role: 'user', content: '那这个东西商业化潜力大吗？谁会为此付费？', timestamp: '2026-04-09T09:04:00Z' },
+    { role: 'assistant', content: '独立开发者和小团队负责人最有痛感——他们一个人要兼顾产品、技术、运营多个角色，思维极易碎片化。建议我们分五条主线并行探索：产品定位、核心功能、技术架构、商业化路径、落地计划。', timestamp: '2026-04-09T09:05:00Z' },
   ],
-  's1-ux': [
-    { role: 'user', content: '拓扑图用什么风格呈现？我希望不要太严肃', timestamp: '2026-04-08T09:10:00Z' },
-    { role: 'assistant', content: '推荐手绘涂鸦风格（Clean Doodle）：手写字体、抖动线条、素描填充节点。这种风格暗示"草稿/思考中"，降低用户对输出完美度的期待，鼓励更自由的探索。', timestamp: '2026-04-08T09:11:00Z' },
-    { role: 'user', content: '很好！字体用什么？', timestamp: '2026-04-08T09:12:00Z' },
-    { role: 'assistant', content: '建议用 Caveat 作为主标题手写体，Patrick Hand 用于正文，Coming Soon 用于小标签。纸张底色用暖白 #f7f4ee，笔迹用深灰 #2a2a2a，重点标记用蓝色和红色笔迹。', timestamp: '2026-04-08T09:13:00Z' },
+  's1-pos': [
+    { role: 'user', content: '先把 MindKit 的产品定位想清楚，到底面向谁、解决什么问题', timestamp: '2026-04-09T09:10:00Z' },
+    { role: 'assistant', content: '定位建议是"AI-native thinking partner"——不是另一个聊天机器人，而是能陪你深度思考的伙伴。核心差异在于结构化：你的思考会自然生长成一棵树，而不是淹没在一长串对话里。', timestamp: '2026-04-09T09:11:00Z' },
+    { role: 'user', content: '但别人会不会觉得这不就是 ChatGPT 加个思维导图？', timestamp: '2026-04-09T09:12:00Z' },
+    { role: 'assistant', content: '关键区别在于"活"的拓扑。ChatGPT 的对话是线性的、用完即弃的；我们的每个节点都有持续的上下文，AI 能跨节点感知全局，自动发现"你在 A 节点说的和 B 节点矛盾了"。这是认知工具，不是问答工具。', timestamp: '2026-04-09T09:13:00Z' },
+    { role: 'user', content: '那一句话总结价值主张是什么？', timestamp: '2026-04-09T09:14:00Z' },
+    { role: 'assistant', content: '"让你的思考像树一样生长，而不是像水一样流走。" 具体来说：结构化保留思考过程，AI 主动发现盲点和矛盾，随着使用积累越来越懂你的思维模式。', timestamp: '2026-04-09T09:15:00Z' },
   ],
-  's1-ux-mobile': [
-    { role: 'user', content: '移动端拓扑图怎么交互？Canvas 触摸体验不太好', timestamp: '2026-04-08T10:00:00Z' },
-    { role: 'assistant', content: '移动端建议：1) 拓扑图简化为可展开的树形列表；2) 支持双指缩放和单指拖拽；3) 点击节点全屏进入对话，顶部面包屑导航回拓扑。核心是保留思维结构感，但适配小屏交互。', timestamp: '2026-04-08T10:01:00Z' },
+  's1-user': [
+    { role: 'user', content: '目标用户到底是谁？不能太泛', timestamp: '2026-04-09T09:30:00Z' },
+    { role: 'assistant', content: '建议聚焦三个人群：1) 独立开发者——一个人扛产品/技术/运营，思维碎片化严重；2) 小团队负责人——需要理清多条并行决策线；3) AI 研究者——需要结构化记录实验思路和发现。', timestamp: '2026-04-09T09:31:00Z' },
+    { role: 'user', content: '独立开发者的痛点具体是什么？', timestamp: '2026-04-09T09:32:00Z' },
+    { role: 'assistant', content: '核心痛点是"多角色切换成本"。一个人既是 PM 又是工程师又是设计师，每次切换角色都要重新加载上下文。现有工具要么太重（Notion、Confluence），要么太碎（微信收藏、备忘录），没有一个工具能让思维有序地展开。', timestamp: '2026-04-09T09:33:00Z' },
+    { role: 'user', content: '小团队呢？他们不是应该用协作工具吗', timestamp: '2026-04-09T09:34:00Z' },
+    { role: 'assistant', content: '小团队（2-5 人）其实很尴尬——协作工具太重用不起来，但个人工具又没法共享决策过程。不过这里有个张力：本地优先和协作天然矛盾。建议 MVP 先聚焦个人场景。', timestamp: '2026-04-09T09:35:00Z' },
+    { role: 'user', content: '好，先打独立开发者这个群体', timestamp: '2026-04-09T09:36:00Z' },
+    { role: 'assistant', content: '明智的选择。独立开发者画像：25-35 岁，全栈工程师为主，习惯为工具付费（GitHub Copilot、Cursor 等已经教育过市场），月付费意愿在 $15-25 区间。他们在 Twitter/X、IndieHackers、ProductHunt 上非常活跃，口碑传播快。', timestamp: '2026-04-09T09:37:00Z' },
   ],
-  's1-ux-a11y': [
-    { role: 'user', content: '无障碍方面需要注意什么？', timestamp: '2026-04-08T10:20:00Z' },
-    { role: 'assistant', content: '核心考虑：1) 拓扑图要有可访问的文本替代——屏幕阅读器读出节点列表和层级关系；2) 键盘导航——Tab/方向键在节点间移动，Enter 进入对话；3) 高对比度模式——涂鸦风格的低对比度线条需要备选方案。建议用 ARIA tree role 标记拓扑结构。', timestamp: '2026-04-08T10:21:00Z' },
+  's1-comp': [
+    { role: 'user', content: '市面上有什么竞品？直接和间接的都算', timestamp: '2026-04-09T10:00:00Z' },
+    { role: 'assistant', content: '四大类竞品：1) ChatGPT/Claude——深度对话但完全线性，无法结构化；2) Notion AI——文档内嵌 AI，但不是对话驱动的思考工具；3) Miro/Whimsical——可视化画布，但缺乏 AI 深度交互；4) Cursor——代码场景的 AI 工具，证明了开发者愿意为 AI 工具付费。', timestamp: '2026-04-09T10:01:00Z' },
+    { role: 'user', content: '为什么这些工具都不够好？', timestamp: '2026-04-09T10:02:00Z' },
+    { role: 'assistant', content: '没有一个同时具备三个能力：1) 动态拓扑——对话自然生长成树结构；2) AI 驱动分裂——自动检测话题漂移并建议分叉；3) 跨节点智能——在节点之间发现关联和矛盾。这三个能力的组合就是我们的护城河。', timestamp: '2026-04-09T10:03:00Z' },
+    { role: 'user', content: '那价格上呢？竞品怎么收费的', timestamp: '2026-04-09T10:04:00Z' },
+    { role: 'assistant', content: '价格参考：ChatGPT Plus $20/月，Cursor Pro $20/月，Notion AI $10/人/月附加，Miro $8-16/人/月。开发者群体对 $15-25/月的工具接受度很高，关键是要让他们感受到"不可替代的价值"。', timestamp: '2026-04-09T10:05:00Z' },
   ],
-  's1-backend': [
-    { role: 'user', content: '后端怎么设计？需要支持 session tree 的 CRUD 和实时同步', timestamp: '2026-04-08T09:20:00Z' },
-    { role: 'assistant', content: '建议用 Hono 做 HTTP API + WebSocket 做实时推送。核心接口：1) GET /sessions — 获取树结构；2) POST /sessions/:id/turn — 发送对话轮次；3) POST /sessions/:id/fork — 分叉新节点。WS 推送树结构变更和 AI 响应流。', timestamp: '2026-04-08T09:21:00Z' },
-    { role: 'user', content: '存储方案呢？不想用数据库', timestamp: '2026-04-08T09:22:00Z' },
-    { role: 'assistant', content: '文件系统持久化：每个 Space 一个目录，session tree 存为 JSON，对话记录按 session 分文件。优点是本地优先、可 git 管理、无外部依赖。Stello 的 FileSystemAdapter 可以直接复用。', timestamp: '2026-04-08T09:23:00Z' },
+  's1-diff': [
+    { role: 'user', content: '基于竞品分析，我们的差异化到底在哪', timestamp: '2026-04-09T10:20:00Z' },
+    { role: 'assistant', content: '结合竞品分析的发现，差异化定位可以总结为一句话："AI-driven thinking topology"——我们是唯一一个让 AI 对话自动生长成可探索拓扑的工具。', timestamp: '2026-04-09T10:21:00Z' },
+    { role: 'user', content: '但这个概念对用户来说会不会太抽象？', timestamp: '2026-04-09T10:22:00Z' },
+    { role: 'assistant', content: '好问题。用户看到的不是"拓扑"，而是"我的想法终于不再乱糟糟了"。演示 demo 的第一感受应该是：输入一个模糊问题，AI 帮你拆解成多条探索线，每条线独立深入，最后自动发现交叉和矛盾——就像现在我们在做的这件事。', timestamp: '2026-04-09T10:23:00Z' },
+    { role: 'user', content: '护城河够深吗？别人能不能抄', timestamp: '2026-04-09T10:24:00Z' },
+    { role: 'assistant', content: '技术本身可以被复制，但数据护城河很深。用户在 MindKit 里积累的思维拓扑、决策过程、知识网络是高度个人化的，迁移成本极高。用得越久，AI 越懂你的思维模式——这是经典的飞轮效应。', timestamp: '2026-04-09T10:25:00Z' },
   ],
-  's1-db': [
-    { role: 'user', content: '数据模型的核心实体有哪些？', timestamp: '2026-04-08T09:30:00Z' },
-    { role: 'assistant', content: '三个核心实体：1) Space — 顶层容器，包含配置和 system prompt；2) Session — 树节点，有 parentId 和 sourceSessionId；3) Turn — 对话轮次，属于某个 Session。关系：Space 1:N Session（树形），Session 1:N Turn（有序列表）。', timestamp: '2026-04-08T09:31:00Z' },
+  's1-feat': [
+    { role: 'user', content: '核心功能都有哪些？先列个全景图', timestamp: '2026-04-09T09:20:00Z' },
+    { role: 'assistant', content: '核心功能三层：1) 对话拓扑引擎——session tree 的创建、渲染、交互；2) AI 自动分裂——检测话题漂移并建议分叉新节点；3) 跨节点洞察——在节点之间发现关联、矛盾和总结。外围功能：Market 模板、产物生成、Space 管理。', timestamp: '2026-04-09T09:21:00Z' },
+    { role: 'user', content: '优先级怎么排？不可能全做', timestamp: '2026-04-09T09:22:00Z' },
+    { role: 'assistant', content: '建议：拓扑引擎是地基必须先做，自动分裂是核心体验必须紧跟，跨节点洞察是差异化卖点但可以简化版本先上。Market 和产物生成属于锦上添花，MVP 阶段可以砍掉。', timestamp: '2026-04-09T09:23:00Z' },
+    { role: 'user', content: '交互上怎么呈现？', timestamp: '2026-04-09T09:24:00Z' },
+    { role: 'assistant', content: '核心交互是 Chat + Canvas 双面板：左侧是拓扑画布，展示整棵思维树；右侧是对话面板，在选中的节点上深入交谈。点击节点切换对话上下文，AI 回复时可能建议"这个话题值得单独展开"。', timestamp: '2026-04-09T09:25:00Z' },
   ],
-  's1-api': [
-    { role: 'user', content: 'API 要考虑移动端的网络情况，怎么优化？', timestamp: '2026-04-08T10:10:00Z' },
-    { role: 'assistant', content: '移动端 API 优化：1) 树结构一次性返回（通常不大）避免多次请求；2) 对话消息分页加载，首屏只取最近 20 条；3) AI 响应用 SSE 流式推送减少等待感；4) 支持离线缓存 + 上线后增量同步。', timestamp: '2026-04-08T10:11:00Z' },
+  's1-topo': [
+    { role: 'user', content: '对话拓扑引擎怎么设计？这是最底层的能力', timestamp: '2026-04-09T10:30:00Z' },
+    { role: 'assistant', content: '核心是 Session Tree 数据结构：每个节点是一个独立会话（有自己的消息列表和上下文），节点之间有 parent-child 关系和 source/conflict 跨分支引用。前端用 Canvas 渲染，后端用文件系统持久化。', timestamp: '2026-04-09T10:31:00Z' },
+    { role: 'user', content: '布局算法用什么？节点多了不会乱吗', timestamp: '2026-04-09T10:32:00Z' },
+    { role: 'assistant', content: '推荐分层布局（Sugiyama 算法变体）作为基础，叠加力导向微调处理跨分支连线。节点按深度分层、同层按宽度排列，source/conflict 连线用贝塞尔曲线避免遮挡。', timestamp: '2026-04-09T10:33:00Z' },
+    { role: 'user', content: '实时渲染性能够吗？节点可能有几十上百个', timestamp: '2026-04-09T10:34:00Z' },
+    { role: 'assistant', content: 'Canvas 2D 渲染几百个节点完全没问题。关键优化两点：1) 视口裁剪——只渲染可见区域内的节点；2) 懒加载——深层子树折叠后不渲染。实测 200 节点在低端设备上也能 60fps。', timestamp: '2026-04-09T10:35:00Z' },
   ],
-  's1-api-auth': [
-    { role: 'user', content: '鉴权方案用 JWT 还是 session cookie？', timestamp: '2026-04-08T10:30:00Z' },
-    { role: 'assistant', content: 'JWT + OAuth2.0 更适合我们的场景：1) 无状态——文件系统后端不想维护 session store；2) 跨端——移动端和 Web 端用同一套 token；3) 支持第三方登录。建议 access token 15 分钟过期 + refresh token 7 天，权限分 owner/editor/viewer 三级。', timestamp: '2026-04-08T10:31:00Z' },
+  's1-split': [
+    { role: 'user', content: '自动分裂具体怎么实现？什么时候触发', timestamp: '2026-04-09T10:50:00Z' },
+    { role: 'assistant', content: '基于拓扑引擎的节点结构，自动分裂的核心逻辑是：用 LLM 分析每轮对话，检测是否出现了与当前节点主题显著偏离的新话题。当置信度 > 0.7 时，AI 会建议"这个话题值得分裂出一个新节点"。', timestamp: '2026-04-09T10:51:00Z' },
+    { role: 'user', content: '误判怎么办？总不能动不动就弹窗说要分裂', timestamp: '2026-04-09T10:52:00Z' },
+    { role: 'assistant', content: '三层防误判：1) 置信度阈值——低于 0.7 不触发；2) 冷却期——同一节点 5 轮内不重复建议；3) 用户确认——AI 只是建议，用户点"分裂"才执行。另外可以学习用户的确认/拒绝模式来调整阈值。', timestamp: '2026-04-09T10:53:00Z' },
+    { role: 'user', content: '这和拓扑引擎的关系是什么', timestamp: '2026-04-09T10:54:00Z' },
+    { role: 'assistant', content: '深度耦合。分裂本质上是在拓扑引擎的 session tree 上执行 fork 操作——创建子节点、继承部分上下文、触发布局重算。两者需要同步迭代，不能独立开发。', timestamp: '2026-04-09T10:55:00Z' },
   ],
-  's1-ai': [
-    { role: 'user', content: 'AI 能力整体怎么规划？', timestamp: '2026-04-08T11:00:00Z' },
-    { role: 'assistant', content: 'AI 能力分三层：1) L3——节点内对话，基础的上下文问答；2) L2——节点摘要记忆，自动提炼每个节点的核心结论；3) L1——跨节点意识，通过 RAG 检索整棵树的相关片段注入上下文。另外要规划 Agent 编排能力，支持工具调用和多步推理。', timestamp: '2026-04-08T11:01:00Z' },
+  's1-insight': [
+    { role: 'user', content: '跨节点洞察是怎么一回事？怎么自动发现关联和矛盾', timestamp: '2026-04-09T11:20:00Z' },
+    { role: 'assistant', content: '基于自动分裂产生的节点摘要，跨节点洞察通过 L1/L2/L3 三层记忆架构实现：L3 是节点内的原始对话，L2 是自动生成的节点摘要，L1 是跨节点的语义比对层。洞察就发生在 L1 层。', timestamp: '2026-04-09T11:21:00Z' },
+    { role: 'user', content: '矛盾是怎么检测的？', timestamp: '2026-04-09T11:22:00Z' },
+    { role: 'assistant', content: '把各节点的 L2 摘要做 embedding，然后两两计算语义相似度。相似度高的进一步用 LLM 判断：是"关联"（相互支持）还是"矛盾"（相互冲突）。比如"本地优先"和"云端同步"就会被标记为矛盾。', timestamp: '2026-04-09T11:23:00Z' },
+    { role: 'user', content: '这跟自动分裂是什么关系', timestamp: '2026-04-09T11:24:00Z' },
+    { role: 'assistant', content: '是一条流水线：分裂产生新节点 → 节点对话后自动生成 L2 摘要 → L1 层比对所有节点的摘要 → 发现关联和矛盾。分裂是输入，洞察是输出，中间靠摘要连接。', timestamp: '2026-04-09T11:25:00Z' },
   ],
-  's1-ai-rag': [
-    { role: 'user', content: 'RAG 怎么和 session tree 结合？', timestamp: '2026-04-08T11:10:00Z' },
-    { role: 'assistant', content: '每个 Session 的对话内容做 embedding 存入向量库。当用户在某个节点提问时，不仅检索当前节点历史，还检索整棵树的相关片段——这就是跨节点的 L1 意识。检索结果带上来源节点 ID，AI 可以主动建议"这和 design 节点的讨论相关"。', timestamp: '2026-04-08T11:11:00Z' },
+  's1-arch': [
+    { role: 'user', content: '技术架构怎么选型？有什么硬约束', timestamp: '2026-04-09T09:40:00Z' },
+    { role: 'assistant', content: '推荐 TypeScript 全栈 + pnpm monorepo。后端用 Hono（轻量、快速、类型安全），底层复用 Stello SDK 的 session 管理能力。核心约束是"本地优先"——数据存在用户本地，不依赖云端。', timestamp: '2026-04-09T09:41:00Z' },
+    { role: 'user', content: '为什么一定要本地优先？', timestamp: '2026-04-09T09:42:00Z' },
+    { role: 'assistant', content: '三个原因：1) 隐私——思维过程是最隐私的数据，用户不愿意上传；2) 速度——本地读写比网络请求快一个数量级；3) 可控性——不依赖服务商，不会因为服务下线而丢失思考记录。', timestamp: '2026-04-09T09:43:00Z' },
+    { role: 'user', content: '但这不是限制了可扩展性吗？', timestamp: '2026-04-09T09:44:00Z' },
+    { role: 'assistant', content: '确实存在张力。本地优先意味着放弃了实时协作、跨设备同步等云端优势。后续可能需要一个 hybrid 方案——核心数据本地存储，可选的云端同步层。但 MVP 阶段先把本地做好。', timestamp: '2026-04-09T09:45:00Z' },
   ],
-  's1-ai-agent': [
-    { role: 'user', content: 'Agent 编排具体怎么做？', timestamp: '2026-04-08T11:30:00Z' },
-    { role: 'assistant', content: 'Agent 编排框架设计：1) 工具注册——声明式定义可用工具（搜索、代码执行、文件读写）；2) 状态机——user→plan→tool_call→observe→respond 循环；3) 错误恢复——工具失败时自动重试或切换策略；4) 多 Agent 协作——不同节点可以运行不同 Agent profile，互相通过 L1 共享上下文。', timestamp: '2026-04-08T11:31:00Z' },
+  's1-local': [
+    { role: 'user', content: '本地存储具体用什么方案？文件系统还是 SQLite', timestamp: '2026-04-09T11:00:00Z' },
+    { role: 'assistant', content: '推荐文件系统方案：每个 Space 一个目录，session tree 存为 tree.json，每个节点的对话存为 {nodeId}.jsonl。优点是零依赖、可 git 管理、人类可读。', timestamp: '2026-04-09T11:01:00Z' },
+    { role: 'user', content: '为什么不用 SQLite？查询不是更方便吗', timestamp: '2026-04-09T11:02:00Z' },
+    { role: 'assistant', content: 'SQLite 确实查询更强，但引入了二进制依赖（node-gyp 编译问题）和额外复杂度。我们的数据模型很简单——树结构 + 消息列表，文件系统完全够用。KISS 原则。', timestamp: '2026-04-09T11:03:00Z' },
+    { role: 'user', content: '那数据同步怎么办？以后如果要多设备', timestamp: '2026-04-09T11:04:00Z' },
+    { role: 'assistant', content: '这就是本地优先的代价了。文件系统方案天然不支持实时同步。未来如果要做多设备同步，可能需要一个 CRDT 层或者 git-like 的合并机制。但这和云端部署方案存在冲突，需要后续讨论。', timestamp: '2026-04-09T11:05:00Z' },
+  ],
+  's1-llm': [
+    { role: 'user', content: 'LLM 接入层怎么设计？只支持一个模型吗', timestamp: '2026-04-09T11:10:00Z' },
+    { role: 'assistant', content: '建议做 provider-agnostic 的抽象层：统一的接口，后面可以接 Claude、GPT、Gemini 甚至本地模型（Ollama）。核心是定义好 LLMProvider interface，包括 chat、stream、embedding 三个方法。', timestamp: '2026-04-09T11:11:00Z' },
+    { role: 'user', content: '多模型有什么好处？', timestamp: '2026-04-09T11:12:00Z' },
+    { role: 'assistant', content: '用户选择权 + 成本控制。不同任务可以用不同模型：深度思考用 Claude Opus，快速问答用 Sonnet，摘要和分类用 Haiku。用户也可以接自己的 API key 降低成本。', timestamp: '2026-04-09T11:13:00Z' },
+    { role: 'user', content: '成本怎么控制？每个节点都调 LLM 开销很大', timestamp: '2026-04-09T11:14:00Z' },
+    { role: 'assistant', content: '三个手段：1) Token 预算——每个节点设上限，超过后提醒用户分裂或总结；2) 上下文窗口管理——只发送最近 N 轮 + L2 摘要，而非全量历史；3) 分级模型——L2 摘要生成用便宜模型，L3 对话用贵模型。', timestamp: '2026-04-09T11:15:00Z' },
+  ],
+  's1-deploy': [
+    { role: 'user', content: '部署方案怎么选？纯本地还是也支持云端', timestamp: '2026-04-09T13:00:00Z' },
+    { role: 'assistant', content: '三种可选路径：1) 纯本地 CLI——npm install 后本地跑；2) Electron 桌面应用——更友好的安装体验；3) 云端 SaaS——Web 直接访问。这三个不互斥但优先级不同。', timestamp: '2026-04-09T13:01:00Z' },
+    { role: 'user', content: '但你之前说要本地优先，云端不是矛盾了吗', timestamp: '2026-04-09T13:02:00Z' },
+    { role: 'assistant', content: '确实和本地优先存储的原则存在矛盾。纯云端意味着数据在服务器上，违背隐私承诺；纯本地又限制了 Web 访问和跨设备体验。这是一个需要认真取舍的架构矛盾。', timestamp: '2026-04-09T13:03:00Z' },
+    { role: 'user', content: '有没有折中方案', timestamp: '2026-04-09T13:04:00Z' },
+    { role: 'assistant', content: '推荐 hybrid 方案：默认本地优先（CLI 或 Electron），可选的云端同步层——数据加密后上传，云端只做中转不做计算。这样既保持隐私承诺，又能支持跨设备。但 MVP 先做纯本地。', timestamp: '2026-04-09T13:05:00Z' },
+  ],
+  's1-biz': [
+    { role: 'user', content: '商业化路径怎么走？怎么赚钱', timestamp: '2026-04-09T12:00:00Z' },
+    { role: 'assistant', content: '基于用户画像中独立开发者的定位，商业化可以分三阶段：1) 免费增值——核心功能免费，高级功能付费；2) 团队版——多人协作场景收费；3) 平台化——Market 模板分成。', timestamp: '2026-04-09T12:01:00Z' },
+    { role: 'user', content: '有哪些商业模式可以参考？', timestamp: '2026-04-09T12:02:00Z' },
+    { role: 'assistant', content: '三种模式：1) SaaS 订阅——按月收费，参考 Cursor $20/月；2) 许可证——一次性买断，参考 Raycast Pro；3) Open-core——核心开源，高级功能付费，参考 Supabase。对于开发者工具，open-core + SaaS 组合最有说服力。', timestamp: '2026-04-09T12:03:00Z' },
+    { role: 'user', content: '什么时候开始收费？', timestamp: '2026-04-09T12:04:00Z' },
+    { role: 'assistant', content: '不建议太早。先用免费版验证核心价值——用户是否真的会反复回来用、是否在节点里积累了有价值的思考。看到留存数据（7 日留存 > 30%）再启动收费。过早收费会阻碍获客。', timestamp: '2026-04-09T12:05:00Z' },
+  ],
+  's1-price': [
+    { role: 'user', content: '定价怎么定？', timestamp: '2026-04-09T14:00:00Z' },
+    { role: 'assistant', content: '结合用户画像中独立开发者 $15-25/月的付费意愿，建议三档定价：Free（基础体验）、Pro $19/月（完整功能）、Team $39/人/月（协作场景）。', timestamp: '2026-04-09T14:01:00Z' },
+    { role: 'user', content: '免费版和付费版怎么区分？', timestamp: '2026-04-09T14:02:00Z' },
+    { role: 'assistant', content: 'Free 版限制：3 个 Space、每 Space 50 节点、仅基础模型（Haiku 级别）、无跨节点洞察。Pro 版解锁：无限 Space、无限节点、多模型选择、完整洞察、产物生成。', timestamp: '2026-04-09T14:03:00Z' },
+    { role: 'user', content: '会不会免费版太弱，用户直接流失', timestamp: '2026-04-09T14:04:00Z' },
+    { role: 'assistant', content: '好的限制应该让用户"尝到甜头但意犹未尽"。3 个 Space + 50 节点足够完成一次完整的头脑风暴，但当你想同时推进多个项目时就不够了。关键是免费版也要能体验到分裂和关联的核心价值。', timestamp: '2026-04-09T14:05:00Z' },
+  ],
+  's1-oss': [
+    { role: 'user', content: '要不要做开源？开发者工具好像都开源', timestamp: '2026-04-09T14:20:00Z' },
+    { role: 'assistant', content: '建议 open-core 模式：核心拓扑引擎开源（MIT），高级功能（跨节点洞察、团队协作、高级模型接入）作为付费闭源模块。开源能获得社区信任和免费分发。', timestamp: '2026-04-09T14:21:00Z' },
+    { role: 'user', content: '但这不是跟定价策略矛盾了吗？开源了谁还付费', timestamp: '2026-04-09T14:22:00Z' },
+    { role: 'assistant', content: '确实存在矛盾——开源越多，Pro 版的付费价值越被稀释。关键是划好边界：开源的是"引擎"（拓扑渲染、基础对话），付费的是"智能"（洞察、自动分裂、高级 AI）。用户自己搭能跑起来，但缺少最有价值的智能层。', timestamp: '2026-04-09T14:23:00Z' },
+    { role: 'user', content: '有没有成功案例可以参考', timestamp: '2026-04-09T14:24:00Z' },
+    { role: 'assistant', content: 'Cursor 是最好的参考——编辑器基于 VSCode 开源，但 AI 能力完全闭源付费。Supabase 也是——PostgreSQL 开源，但托管和增值服务收费。关键是开源部分要有独立价值，付费部分要有不可替代的体验。', timestamp: '2026-04-09T14:25:00Z' },
+  ],
+  's1-growth': [
+    { role: 'user', content: '增长怎么做？靠什么飞轮转起来', timestamp: '2026-04-09T14:40:00Z' },
+    { role: 'assistant', content: '结合开源社区的分发优势，增长飞轮可以是：开源 → 社区用户 → 模板分享（Market）→ 更多用户看到 → 贡献更多模板 → 生态滚雪球。核心是让用户的使用过程本身就在产生可分享的价值。', timestamp: '2026-04-09T14:41:00Z' },
+    { role: 'user', content: '有没有病毒传播的机制', timestamp: '2026-04-09T14:42:00Z' },
+    { role: 'assistant', content: '模板分享天然有病毒性。想象一个用户用 MindKit 做了一个"创业 BP 规划"模板，发到 ProductHunt 上——别人看到就想试试，试了就会想做自己的模板。每个模板都是一个获客入口。', timestamp: '2026-04-09T14:43:00Z' },
+    { role: 'user', content: '留存靠什么？工具类产品容易被替代', timestamp: '2026-04-09T14:44:00Z' },
+    { role: 'assistant', content: '留存靠数据锁定。用户在 MindKit 里积累的思维拓扑、决策记录、知识网络是高度个人化的，迁移成本极高。用得越久，AI 越懂你的思维习惯——这是最强的留存护城河。', timestamp: '2026-04-09T14:45:00Z' },
+  ],
+  's1-mvp': [
+    { role: 'user', content: 'MVP 应该做什么？哪些功能可以砍', timestamp: '2026-04-09T15:00:00Z' },
+    { role: 'assistant', content: '极简 MVP：单 Space + 基础拓扑渲染 + 手动分裂（点击按钮） + 单模型对话。砍掉的：Market、自动分裂（改手动）、跨节点洞察、多模型、产物生成。目标是验证"拓扑对话"这个核心假设。', timestamp: '2026-04-09T15:01:00Z' },
+    { role: 'user', content: '但自动分裂和洞察不是核心功能里说的差异化卖点吗？砍掉还有啥竞争力', timestamp: '2026-04-09T15:02:00Z' },
+    { role: 'assistant', content: '确实跟核心功能规划存在矛盾——理想中的完整体验和 MVP 的资源约束之间需要取舍。我的建议是：手动分裂已经能让用户体验到拓扑的价值，自动分裂是锦上添花。先验证用户是否愿意主动分裂，如果答案是 yes，再自动化。', timestamp: '2026-04-09T15:03:00Z' },
+    { role: 'user', content: '多久能做出来', timestamp: '2026-04-09T15:04:00Z' },
+    { role: 'assistant', content: '4 周冲刺：W1 搭建骨架（monorepo + 路由 + 基础 UI），W2 核心功能（对话 + 拓扑渲染 + 手动分裂），W3 AI 接入（LLM 对话 + L2 摘要），W4 打磨（交互细节 + 错误处理 + 部署脚本）。一个全栈开发者可以搞定。', timestamp: '2026-04-09T15:05:00Z' },
+  ],
+  's1-plan': [
+    { role: 'user', content: '落地计划是什么？总体时间线怎么排', timestamp: '2026-04-09T12:30:00Z' },
+    { role: 'assistant', content: '三阶段计划：Phase 1（W1-4）——MVP 开发，验证核心循环；Phase 2（W5-8）——Beta 版，加入 Market、洞察、多模型；Phase 3（W9+）——正式上线 + 增长。每个阶段有明确的 Go/No-Go 标准。', timestamp: '2026-04-09T12:31:00Z' },
+    { role: 'user', content: '每个阶段的里程碑是什么', timestamp: '2026-04-09T12:32:00Z' },
+    { role: 'assistant', content: 'Phase 1 里程碑：可用的单 Space 拓扑 + 对话体验，10 个内测用户反馈。Phase 2 里程碑：Market 上线 + 3 个官方模板 + 50 个 beta 用户。Phase 3 里程碑：ProductHunt 发布 + 500 DAU。', timestamp: '2026-04-09T12:33:00Z' },
+    { role: 'user', content: '团队怎么配？一个人够吗', timestamp: '2026-04-09T12:34:00Z' },
+    { role: 'assistant', content: '最小团队 3 人：1 全栈（核心开发）+ 1 AI 工程师（LLM 集成和优化）+ 1 设计/增长（交互设计 + 社区运营）。一个人也能做出 MVP，但 beta 阶段开始需要分工。', timestamp: '2026-04-09T12:35:00Z' },
+  ],
+  's1-roadmap': [
+    { role: 'user', content: '具体的上线时间表是什么，里程碑怎么定', timestamp: '2026-04-09T15:30:00Z' },
+    { role: 'assistant', content: '基于 MVP 的 4 周开发周期：W1-4 MVP 开发 → W5 内部 dogfooding → W6-7 小范围内测（20 人）→ W8 公开 beta → W9 ProductHunt + HackerNews launch。总计约 2 个月从开发到公开发布。', timestamp: '2026-04-09T15:31:00Z' },
+    { role: 'user', content: '上线策略是什么？怎么获取第一批用户', timestamp: '2026-04-09T15:32:00Z' },
+    { role: 'assistant', content: '三管齐下：1) ProductHunt launch——开发者工具的标准首发渠道，准备好 demo GIF 和 landing page；2) HackerNews Show HN——写一篇技术博客讲"为什么线性对话不够用"；3) Twitter/X 社区——持续分享开发过程，建立期待感。', timestamp: '2026-04-09T15:33:00Z' },
+    { role: 'user', content: '怎么衡量成功？', timestamp: '2026-04-09T15:34:00Z' },
+    { role: 'assistant', content: '核心指标四个：1) DAU > 500——日活说明产品有黏性；2) 日均 Space 创建 > 50——说明用户在用来做真实事情；3) 平均节点深度 > 3——说明用户在深入思考而非浅尝辄止；4) 7 日留存 > 40%——说明价值被认可。这些数据 4 周内就能看到趋势。', timestamp: '2026-04-09T15:35:00Z' },
   ],
   // ── Space 2: 技术架构评审 ──
   's2-main': [
@@ -652,21 +755,215 @@ export async function getSessionTree(spaceId: string): Promise<{ tree: SessionTr
   return request(`/spaces/${spaceId}/sessions`)
 }
 
+// sp-1 演示脚本：每次对话按顺序生长出预设节点
+const sp1DemoSteps: { parentId: string; node: SessionTreeNode; reply: string; systemNotices?: string[] }[] = [
+  // 1. 产品定位 — 从根节点分裂
+  {
+    parentId: 's1-main',
+    node: { id: 's1-pos', label: '产品定位', status: 'active', turnCount: 0, children: [] },
+    reply: '产品定位确实需要先想清楚。MindKit 本质上要回答三个问题：面向谁、解决什么问题、和现有工具有什么不同。从工具定位来看，它介于 ChatGPT（深度对话但线性）和 Miro（可视化但静态）之间，核心差异是"会生长的对话拓扑"。\n\n这个方向展开来说会比较长，我帮你单独开了一个「产品定位」节点来深入讨论。',
+  },
+  // 2. 核心功能 — 从根节点分裂
+  {
+    parentId: 's1-main',
+    node: { id: 's1-feat', label: '核心功能', status: 'active', turnCount: 0, children: [] },
+    reply: '功能规划要分层看。第一层是基础体验：对话 + 拓扑可视化；第二层是智能层：自动分裂、跨节点洞察；第三层是生态层：Market 模板、协作。优先级建议从第一层做起，但第二层才是真正的差异化卖点。\n\n我帮你创建了「核心功能」节点，后续我们可以在那边逐个拆解每个功能的设计细节。',
+  },
+  // 3. 技术架构 — 从根节点分裂
+  {
+    parentId: 's1-main',
+    node: { id: 's1-arch', label: '技术架构', status: 'active', turnCount: 0, children: [] },
+    reply: '技术选型最大的约束是"本地优先"——这不只是技术偏好，而是产品哲学。思维过程是最隐私的数据，用户不应该被迫把它上传到云端。这个约束会影响存储方案、部署方式、甚至商业模式。\n\n技术架构涉及的决策点比较多，我给你开了「技术架构」节点，我们可以逐项讨论。',
+  },
+  // 4. 用户画像 — 从产品定位分裂
+  {
+    parentId: 's1-pos',
+    node: { id: 's1-user', label: '用户画像', status: 'active', turnCount: 0, children: [] },
+    reply: '我梳理了三类潜在用户：\n\n1) 独立开发者/创业者——需要一个人扮演多角色（产品、技术、商业），现有工具（Notion/Miro）太静态\n2) 小团队 PM/Tech Lead——需要对齐团队认知，但文档和会议效率低\n3) AI 从业者/研究者——思维发散但需要结构化梳理\n\n这三类用户的需求差异很大，建议先聚焦一类。你觉得哪类优先？这块我开了「用户画像」节点来详细分析。',
+  },
+  // 5. 对话拓扑引擎 — 从核心功能分裂
+  {
+    parentId: 's1-feat',
+    node: { id: 's1-topo', label: '对话拓扑引擎', status: 'active', turnCount: 0, children: [] },
+    reply: '拓扑引擎是最底层的核心能力。它本质上是一个 Session Tree 数据结构：每个节点是独立会话（有自己的消息列表、上下文摘要），节点之间通过 parent-child 关系和 source/conflict 引用连接。前端用 Canvas 渲染，支持缩放、拖拽、节点点击切换。\n\n这是整个产品的技术地基，值得单独深入，我帮你开了「对话拓扑引擎」节点。',
+  },
+  // 6. 竞品分析 — 从产品定位分裂
+  {
+    parentId: 's1-pos',
+    node: { id: 's1-comp', label: '竞品分析', status: 'active', turnCount: 0, children: [] },
+    reply: '市面上的直接竞品不多，但间接竞品很多：\n\n- Notion AI：文档+AI，但对话是线性附加的\n- Miro AI：可视化+AI，但缺乏深度对话能力\n- ChatGPT/Claude：深度对话强，但没有结构化和分支管理\n- Cursor：代码场景做得很好，但不是通用思维工具\n\n目前没有一个产品同时做到"拓扑结构 + 多线程深度对话 + 跨节点智能"。这块可以深挖，我给你开了「竞品分析」节点。',
+  },
+  // 7. AI 自动分裂 — 从核心功能分裂（关联：拓扑引擎）
+  {
+    parentId: 's1-feat',
+    node: { id: 's1-split', label: 'AI 自动分裂', status: 'active', turnCount: 0, sourceSessionId: 's1-topo', children: [] },
+    reply: '自动分裂的核心逻辑是：LLM 分析每轮对话，检测是否出现了与当前节点主题显著偏离的新话题。当置信度高时，AI 会建议创建一个新节点。关键是不能太敏感（动不动分裂很烦），也不能太迟钝（用户自己发现不了该分裂的时机）。\n\n这个功能的设计细节比较复杂，我单独开了「AI 自动分裂」节点来讨论。',
+    systemNotices: ['🔗 发现关联：「AI 自动分裂」的实现深度依赖「对话拓扑引擎」的节点管理和上下文继承能力，两者需要协同设计。'],
+  },
+  // 8. 本地优先存储 — 从技术架构分裂
+  {
+    parentId: 's1-arch',
+    node: { id: 's1-local', label: '本地优先存储', status: 'active', turnCount: 0, children: [] },
+    reply: '推荐文件系统方案：每个 Space 一个目录，Session Tree 存为 tree.json，每个节点的对话存为 {nodeId}.jsonl。这样做的好处是零依赖、人类可读、可以 git 管理。SQLite 查询更强但引入了二进制编译依赖，对我们目前简单的数据模型来说过度了。\n\n存储方案涉及的决策比较多，我开了「本地优先存储」节点来细化。',
+  },
+  // 9. 差异化定位 — 从产品定位分裂（关联：竞品分析）
+  {
+    parentId: 's1-pos',
+    node: { id: 's1-diff', label: '差异化定位', status: 'active', turnCount: 0, sourceSessionId: 's1-comp', children: [] },
+    reply: '综合来看，MindKit 的核心差异化有三点：\n\n1) 对话不是线性的，而是一棵会生长的树——每个想法都能独立深入\n2) AI 有"跨节点意识"——能自动发现不同节点之间的关联和矛盾\n3) 本地优先——思维数据完全掌控在用户手里\n\n一句话定位：「让你的思维像代码一样可以 fork 和 merge 的 AI 工具」。\n\n差异化这个话题足够重要，我开了「差异化定位」节点来专门讨论。',
+    systemNotices: ['🔗 发现关联：「差异化定位」的结论直接基于「竞品分析」中的市场空白发现，两者紧密关联。'],
+  },
+  // 10. LLM 接入层 — 从技术架构分裂
+  {
+    parentId: 's1-arch',
+    node: { id: 's1-llm', label: 'LLM 接入层', status: 'active', turnCount: 0, children: [] },
+    reply: '建议做 provider-agnostic 的抽象层：统一的 LLMProvider 接口，后面可以接 Claude、GPT、Gemini 甚至本地模型（Ollama）。不同任务用不同模型——深度思考用 Opus，快速问答用 Sonnet，摘要分类用 Haiku。用户也可以接自己的 API key 降低成本。\n\n多模型接入有不少设计决策，我开了「LLM 接入层」节点。',
+  },
+  // 11. 跨节点洞察 — 从核心功能分裂（关联：AI 自动分裂）
+  {
+    parentId: 's1-feat',
+    node: { id: 's1-insight', label: '跨节点洞察', status: 'active', turnCount: 0, sourceSessionId: 's1-split', children: [] },
+    reply: '跨节点洞察通过三层记忆架构实现：L3 是节点内的原始对话，L2 是自动生成的节点摘要，L1 是跨节点的语义比对层。洞察就发生在 L1 层——把各节点的 L2 摘要做 embedding，两两比较，相似度高的进一步用 LLM 判断是"关联"（相互支持）还是"矛盾"（相互冲突）。\n\n这是产品的智能核心，我帮你开了「跨节点洞察」节点来详细设计。',
+    systemNotices: ['🔗 发现关联：「跨节点洞察」是「AI 自动分裂」的下游能力——分裂产生节点，洞察发现节点间的隐含关系。'],
+  },
+  // 12. 商业化 — 从根节点分裂（关联：用户画像）
+  {
+    parentId: 's1-main',
+    node: { id: 's1-biz', label: '商业化', status: 'active', turnCount: 0, sourceSessionId: 's1-user', children: [] },
+    reply: '商业化可以分三个阶段思考：\n\n1) 免费增值——核心功能免费，高级 AI 能力付费，先让用户用起来\n2) 团队版——多人协作场景，按座收费\n3) 平台化——Market 模板分成，让社区创造价值\n\n不过说实话，商业模式高度依赖目标用户是谁、他们愿意为什么付费。这个方向比较独立，我给你开了「商业化」节点。',
+    systemNotices: ['🔗 发现关联：「商业化」路径与「用户画像」直接相关——定价策略和获客渠道都取决于目标用户的付费习惯和使用场景。'],
+  },
+  // 13. 落地计划 — 从根节点分裂
+  {
+    parentId: 's1-main',
+    node: { id: 's1-plan', label: '落地计划', status: 'active', turnCount: 0, children: [] },
+    reply: '从 idea 到上线，建议分三个 phase：\n\nPhase 1（4 周）——MVP 开发，验证核心假设：用户是否愿意用"拓扑对话"来思考\nPhase 2（4 周）——Beta 版，加入 Market、洞察、多模型\nPhase 3（2 周+）——正式上线 + 增长\n\n每个阶段都要有明确的 Go/No-Go 标准，不盲目往下推。落地计划的细节我开了个节点来规划。',
+  },
+  // 14. 部署方案 — 从技术架构分裂（关联：LLM，矛盾：本地优先）
+  {
+    parentId: 's1-arch',
+    node: { id: 's1-deploy', label: '部署方案', status: 'active', turnCount: 0, sourceSessionId: 's1-llm', conflictSessionId: 's1-local', children: [] },
+    reply: '部署有三条路径：1) 纯本地 CLI——npm install 后本地跑，最符合本地优先原则；2) Electron 桌面应用——更友好的安装体验；3) 云端 SaaS——Web 直接访问，用户零门槛。\n\n但说实话，这里有一个绕不开的架构矛盾——如果坚持本地优先，云端 SaaS 就很难做；如果为了降低门槛做云端，数据隐私承诺就要打折扣。需要认真取舍。\n\n我帮你开了「部署方案」节点来讨论这个取舍。',
+    systemNotices: [
+      '🔗 发现关联：「部署方案」与「LLM 接入层」的模型调用方式紧密相关——本地部署需要考虑 API key 管理和网络访问。',
+      '⚡ 发现矛盾：「部署方案」中的云端 SaaS 路径与「本地优先存储」的核心架构原则存在根本冲突——数据存放位置无法两全。',
+    ],
+  },
+  // 15. 定价策略 — 从商业化分裂（关联：用户画像）
+  {
+    parentId: 's1-biz',
+    node: { id: 's1-price', label: '定价策略', status: 'active', turnCount: 0, sourceSessionId: 's1-user', children: [] },
+    reply: '参考开发者工具的定价区间（Cursor $20/月、Notion AI $10/月），建议三档：\n\n- Free：3 个 Space、每 Space 50 节点、基础模型\n- Pro $19/月：无限 Space 和节点、多模型、跨节点洞察\n- Team $39/人/月：协作 + 管理后台\n\n关键是免费版要让用户"尝到甜头但意犹未尽"——能完成一次完整头脑风暴，但想同时推进多个项目就不够了。\n\n定价有不少细节要讨论，我开了「定价策略」节点。',
+    systemNotices: ['🔗 发现关联：「定价策略」的定价区间直接参考了「用户画像」中独立开发者的付费意愿分析（$15-25/月舒适区）。'],
+  },
+  // 16. 开源社区 — 从商业化分裂（矛盾：定价策略）
+  {
+    parentId: 's1-biz',
+    node: { id: 's1-oss', label: '开源社区', status: 'active', turnCount: 0, conflictSessionId: 's1-price', children: [] },
+    reply: '建议 open-core 模式：核心拓扑引擎开源（MIT），高级功能（洞察、协作、高级 AI）作为付费闭源模块。开源的好处是社区信任、免费分发、社区贡献；但边界很关键——开源太多，Pro 版就没价值了。\n\n参考 Cursor：编辑器基于 VSCode 开源，但 AI 能力完全闭源。关键是开源部分有独立价值，付费部分有不可替代的体验。\n\n这个话题我开了「开源社区」节点来讨论。',
+    systemNotices: ['⚡ 发现矛盾：「开源社区」的策略与「定价策略」存在张力——开源程度越高，Pro 版的付费壁垒越弱，需要精确划定开源边界。'],
+  },
+  // 17. 极简 MVP — 从落地计划分裂（矛盾：核心功能）
+  {
+    parentId: 's1-plan',
+    node: { id: 's1-mvp', label: '极简 MVP', status: 'active', turnCount: 0, conflictSessionId: 's1-feat', children: [] },
+    reply: '极简 MVP 的范围建议：单 Space + 基础拓扑渲染 + 手动分裂 + 单模型对话。砍掉的功能：Market、自动分裂（改手动）、跨节点洞察、多模型、产物生成。\n\n目标是用最小成本验证核心假设——用户是否真的愿意用"拓扑"来组织思考，而不是停留在线性对话里。如果手动分裂都没人用，自动化也没意义。\n\n4 周可以做出来，我开了「极简 MVP」节点来细化排期。',
+    systemNotices: ['⚡ 发现矛盾：「极简 MVP」需要大量砍功能（自动分裂、洞察、多模型），这与「核心功能」中规划的完整差异化体验存在冲突——需要在速度和完整性之间取舍。'],
+  },
+  // 18. 增长飞轮 — 从商业化分裂（关联：开源社区）
+  {
+    parentId: 's1-biz',
+    node: { id: 's1-growth', label: '增长飞轮', status: 'active', turnCount: 0, sourceSessionId: 's1-oss', children: [] },
+    reply: '增长飞轮的核心循环：开源吸引开发者 → 开发者使用并创建模板 → 模板分享到 Market → 更多用户发现 MindKit → 部分转化为付费用户 → 收入投入产品迭代。\n\n每个模板本身就是一个获客入口——想象有人在 ProductHunt 上分享一个"创业 BP 规划"模板，别人点进来就能直接用。留存则靠数据锁定——用户积累的思维拓扑和知识网络迁移成本极高。\n\n增长策略我开了「增长飞轮」节点。',
+    systemNotices: ['🔗 发现关联：「增长飞轮」的核心引擎是「开源社区」带来的免费分发——社区用户是天然的种子用户池和内容贡献者。'],
+  },
+  // 19. 上线路线图 — 从落地计划分裂（关联：极简 MVP）
+  {
+    parentId: 's1-plan',
+    node: { id: 's1-roadmap', label: '上线路线图', status: 'active', turnCount: 0, sourceSessionId: 's1-mvp', children: [] },
+    reply: '基于 MVP 的 4 周周期，整体时间表：\n\nW1-4：MVP 开发 → W5：内部 dogfooding → W6-7：小范围内测（20人）→ W8：公开 beta → W9：ProductHunt + HackerNews launch\n\n关键里程碑：W4 有可用产品、W7 内测留存 > 30%（Go/No-Go）、W9 公开发布目标 500 DAU。\n\n三管齐下获客：ProductHunt launch + HN 技术博客 "为什么线性对话不够用" + Twitter 持续分享开发过程。\n\n我开了「上线路线图」节点来细化每周任务。',
+    systemNotices: ['🔗 发现关联：「上线路线图」的时间表直接基于「极简 MVP」确定的功能范围来倒推——MVP 范围变化会直接影响上线时间。'],
+  },
+]
+
+export const sp1AutoDemo: { targetSessionId: string; userInput: string; createdNodeId: string }[] = [
+  { targetSessionId: 's1-main', userInput: '先聊聊产品定位吧，MindKit 到底要做成什么样的东西', createdNodeId: 's1-pos' },
+  { targetSessionId: 's1-main', userInput: '那核心功能呢，哪些是必须做的', createdNodeId: 's1-feat' },
+  { targetSessionId: 's1-main', userInput: '技术上有什么需要提前想清楚的吗', createdNodeId: 's1-arch' },
+  { targetSessionId: 's1-pos', userInput: '我们的目标用户到底是谁，能不能具体一点', createdNodeId: 's1-user' },
+  { targetSessionId: 's1-feat', userInput: '我觉得拓扑引擎是最核心的，展开说说怎么设计', createdNodeId: 's1-topo' },
+  { targetSessionId: 's1-pos', userInput: '市面上有没有类似的产品，我们跟他们比怎么样', createdNodeId: 's1-comp' },
+  { targetSessionId: 's1-feat', userInput: '自动分裂这个怎么做，什么时候该触发什么时候不该', createdNodeId: 's1-split' },
+  { targetSessionId: 's1-arch', userInput: '数据存哪里，用文件系统还是数据库', createdNodeId: 's1-local' },
+  { targetSessionId: 's1-pos', userInput: '综合竞品来看，我们的核心差异化到底是什么', createdNodeId: 's1-diff' },
+  { targetSessionId: 's1-arch', userInput: 'LLM 接入怎么做，只支持一家不太好吧', createdNodeId: 's1-llm' },
+  { targetSessionId: 's1-feat', userInput: '跨节点洞察是怎么回事，能自动发现不同节点之间的联系吗', createdNodeId: 's1-insight' },
+  { targetSessionId: 's1-main', userInput: '聊聊商业化吧，这个东西怎么赚钱', createdNodeId: 's1-biz' },
+  { targetSessionId: 's1-main', userInput: '那落地计划呢，总不能一直想不动手', createdNodeId: 's1-plan' },
+  { targetSessionId: 's1-arch', userInput: '部署怎么搞，用户怎么用到这个产品', createdNodeId: 's1-deploy' },
+  { targetSessionId: 's1-biz', userInput: '定价怎么定，免费给多少付费给多少', createdNodeId: 's1-price' },
+  { targetSessionId: 's1-biz', userInput: '要不要开源？开发者工具好像都在做开源', createdNodeId: 's1-oss' },
+  { targetSessionId: 's1-plan', userInput: 'MVP 做哪些就够了，哪些可以先不做', createdNodeId: 's1-mvp' },
+  { targetSessionId: 's1-biz', userInput: '增长靠什么，冷启动怎么搞', createdNodeId: 's1-growth' },
+  { targetSessionId: 's1-plan', userInput: '给我排一个具体的上线时间表', createdNodeId: 's1-roadmap' },
+]
+
+// 备份 sp-1 节点的对话数据（重置时恢复）
+const sp1MessageBackup: Record<string, TurnRecord[]> = {}
+for (const key of Object.keys(mockMessages)) {
+  if (key.startsWith('s1-')) {
+    sp1MessageBackup[key] = mockMessages[key].map((m) => ({ ...m }))
+  }
+}
+
+/** 获取并消费节点的对话脚本（返回后清空，后续 getSessionMessages 返回空） */
+export function consumeNodeConversation(nodeId: string): TurnRecord[] {
+  const records = mockMessages[nodeId]
+  if (!records || records.length === 0) return []
+  const copy = [...records]
+  mockMessages[nodeId] = []
+  return copy
+}
+let sp1StepIndex = 0
+
+/** 重置 sp-1 演示到初始状态（只剩根节点，恢复对话数据和产物） */
+export function resetSp1Demo() {
+  sp1StepIndex = 0
+  mockTrees['sp-1'] = [
+    { id: 's1-main', label: 'MindKit', status: 'active', turnCount: 1, children: [] },
+  ]
+  // 恢复对话数据
+  for (const key of Object.keys(sp1MessageBackup)) {
+    mockMessages[key] = sp1MessageBackup[key].map((m) => ({ ...m }))
+  }
+  // 清空产物
+  mockProducts['sp-1'] = []
+}
+
 export async function sendTurn(spaceId: string, sessionId: string, _input: string): Promise<TurnResult> {
   if (MOCK) {
     await delay(800 + Math.random() * 700)
-    // 每次发送都分裂出新子节点
     const tree = mockTrees[spaceId]
-    let forkLabel = _input.slice(0, 12)
-    if (tree) {
-      const findNode = (nodes: SessionTreeNode[], id: string): SessionTreeNode | null => {
-        for (const n of nodes) {
-          if (n.id === id) return n
-          const found = findNode(n.children, id)
-          if (found) return found
-        }
-        return null
+    const findNode = (nodes: SessionTreeNode[], id: string): SessionTreeNode | null => {
+      for (const n of nodes) {
+        if (n.id === id) return n
+        const found = findNode(n.children, id)
+        if (found) return found
       }
+      return null
+    }
+
+    // sp-1 走演示脚本
+    if (spaceId === 'sp-1' && sp1StepIndex < sp1DemoSteps.length && tree) {
+      const step = sp1DemoSteps[sp1StepIndex++]
+      const parent = findNode(tree, step.parentId)
+      if (parent) parent.children.push({ ...step.node, children: [] })
+      return { response: step.reply, records: [], systemNotices: step.systemNotices }
+    }
+
+    // 其他 space 走通用逻辑
+    const forkLabel = _input.slice(0, 12)
+    if (tree) {
       const parent = findNode(tree, sessionId)
       if (parent) {
         parent.children.push({
@@ -754,6 +1051,7 @@ function clonePreset(preset: KitPreset, prefix: string, isTemplate = true): { tr
       ...node,
       id: newId,
       sourceSessionId: node.sourceSessionId ? idMap[node.sourceSessionId] : undefined,
+      conflictSessionId: node.conflictSessionId ? idMap[node.conflictSessionId] : undefined,
       activationStatus: isTemplate ? (isRoot ? 'activated' : 'inactive') : undefined,
       guideQuestion: isTemplate && !isRoot ? `描述一下你在"${node.label}"方面的想法和需求` : undefined,
       children: node.children.map(cloneNode),
@@ -836,11 +1134,72 @@ export async function publishSpace(spaceId: string, data: { label: string; descr
 
 /* ─── Products ─── */
 
+// sp-1 的产物数据（演示时动态添加）
+const sp1Products: Product[] = [
+  { id: 'prod-1', type: 'PRD 文档', title: 'MindKit 产品需求文档 v0.1', summary: 'AI-native 思维拓扑工具的完整产品需求规格，涵盖定位、用户画像、核心功能和竞品分析', sourceNodeIds: ['s1-main', 's1-pos', 's1-user', 's1-comp', 's1-diff', 's1-feat'], content: '# MindKit 产品需求文档\n\n## 产品定位\nAI-native thinking partner——让思考像树一样生长，而不是像水一样流走。\n\n## 目标用户\n独立开发者为核心，25-35 岁全栈工程师，月付费意愿 $15-25。\n\n## 核心功能\n1. **对话拓扑引擎** — Session Tree + Canvas 渲染 + 力导向布局\n2. **AI 自动分裂** — LLM 话题漂移检测，置信度 > 0.7 触发\n3. **跨节点洞察** — L1/L2/L3 三层记忆，自动发现关联和矛盾\n\n## 竞品分析\n- ChatGPT：深度对话但线性，无结构化\n- Notion AI：文档内嵌 AI，非对话驱动\n- Miro：可视化画布，缺乏 AI 深度交互\n- Cursor：代码场景，证明开发者愿意为 AI 工具付费\n\n## 差异化\n唯一同时具备动态拓扑、AI 驱动分裂、跨节点智能的产品。数据护城河来自用户积累的思维模式。', createdAt: '2026-04-09T12:00:00Z', updatedAt: '2026-04-09T15:00:00Z' },
+  { id: 'prod-2', type: '技术方案', title: 'MindKit 技术架构设计文档', summary: '本地优先架构方案：TypeScript 全栈 + Hono 后端 + 文件系统持久化 + 多模型 LLM 抽象层', sourceNodeIds: ['s1-arch', 's1-local', 's1-llm', 's1-deploy', 's1-topo'], content: '# MindKit 技术架构\n\n## 技术栈\n- TypeScript 严格模式 + pnpm monorepo\n- 后端：Hono + @hono/node-server + ws\n- 前端：React + Vite + Canvas 2D\n- 存储：文件系统（NodeFileSystemAdapter）\n\n## 核心架构原则\n**本地优先**：数据存在用户本地，零外部依赖。每个 Space 一个目录，tree.json + {nodeId}.jsonl。\n\n## LLM 接入层\nProvider-agnostic 抽象：统一 LLMProvider interface（chat/stream/embedding），支持 Claude/GPT/Ollama。Token 预算按节点控制。\n\n## 部署方案\nHybrid 路径：默认本地 CLI，未来可选 Electron 桌面应用和加密云端同步。\n\n## 性能策略\n- Canvas 视口裁剪：只渲染可见区域节点\n- 子树懒加载：折叠节点不渲染\n- 上下文窗口管理：最近 N 轮 + L2 摘要', createdAt: '2026-04-09T10:00:00Z', updatedAt: '2026-04-09T14:00:00Z' },
+  { id: 'prod-3b', type: '商业计划书', title: 'MindKit 商业化方案', summary: '面向独立开发者的 open-core 商业模式，Free/Pro/Team 三档定价，开源社区驱动增长', sourceNodeIds: ['s1-biz', 's1-price', 's1-oss', 's1-growth', 's1-user'], content: '# MindKit 商业计划书\n\n## 商业模式\nOpen-core + SaaS 订阅：核心拓扑引擎开源（MIT），高级智能功能付费。\n\n## 定价策略\n| 档位 | 价格 | 核心权益 |\n|------|------|----------|\n| Free | $0 | 3 Space / 50 节点 / 基础模型 |\n| Pro | $19/月 | 无限 Space / 多模型 / 完整洞察 |\n| Team | $39/人/月 | 协作 / 共享 Space / 管理后台 |\n\n## 增长飞轮\n开源社区 → 模板分享（Market）→ 用户沉淀数据 → 网络效应 → 更多社区贡献。\n\n## 关键矛盾\n- 开源范围 vs Pro 付费价值：引擎开源、智能闭源\n- 本地优先 vs 云端协作：hybrid 方案分阶段推进\n\n## 预期指标\nY1 目标：5000 免费用户，500 付费用户，$114K ARR', createdAt: '2026-04-09T13:00:00Z', updatedAt: '2026-04-09T15:30:00Z' },
+  { id: 'prod-4b', type: '上线路线图', title: 'MindKit 上线路线图', summary: '从 MVP 到正式上线的 9 周计划，含里程碑、团队配置和成功指标', sourceNodeIds: ['s1-plan', 's1-mvp', 's1-roadmap'], content: '# MindKit 上线路线图\n\n## Phase 1: MVP（W1-4）\n- 单 Space + 基础拓扑渲染 + 手动分裂 + 单模型\n- 里程碑：可用的核心循环，10 个内测用户反馈\n- 团队：1 全栈开发者\n\n## Phase 2: Beta（W5-8）\n- Market 模板 + 跨节点洞察 + 多模型 + 自动分裂\n- 里程碑：3 个官方模板，50 个 beta 用户\n- 团队扩至 3 人\n\n## Phase 3: Launch（W9+）\n- ProductHunt + HackerNews + Twitter 社区发布\n- 里程碑：DAU 500 / 日均创建 50 Space / 7 日留存 40%\n\n## 关键取舍\n- MVP 砍掉自动分裂和洞察（与完整功能规划矛盾）\n- 先验证"用户是否愿意主动分裂"，再自动化\n\n## 成功标准\n| 指标 | 目标 | 时间 |\n|------|------|------|\n| DAU | 500 | W12 |\n| 付费转化 | 10% | W16 |\n| 节点深度 | >3 | W10 |', createdAt: '2026-04-09T14:00:00Z', updatedAt: '2026-04-09T16:00:00Z' },
+]
+
+/** 产物生成触发点：step 索引 → 产物索引 + 系统通知 + skill 调用信息 */
+export const sp1ProductTriggers: Record<number, {
+  productIndex: number
+  notice: string
+  skillName: string
+  skillDesc: string
+  sourceNodes: string[]
+  productTitle: string
+}> = {
+  // step 8 (差异化定位完成) → PRD
+  8: {
+    productIndex: 0,
+    notice: '📄 产物生成：基于「产品定位」「用户画像」「竞品分析」「差异化」「核心功能」等节点的讨论，已自动汇总生成「MindKit 产品需求文档 v0.1」',
+    skillName: 'prd-generator',
+    skillDesc: '汇总多节点讨论，生成结构化产品需求文档',
+    sourceNodes: ['产品定位', '用户画像', '竞品分析', '差异化定位', '核心功能', '对话拓扑引擎'],
+    productTitle: 'MindKit 产品需求文档 v0.1',
+  },
+  // step 13 (部署方案完成) → 技术方案
+  13: {
+    productIndex: 1,
+    notice: '📄 产物生成：基于「技术架构」「本地优先存储」「LLM 接入层」「部署方案」「拓扑引擎」等节点的讨论，已自动汇总生成「MindKit 技术架构设计文档」',
+    skillName: 'tech-doc-writer',
+    skillDesc: '提取技术讨论要点，生成架构设计文档',
+    sourceNodes: ['技术架构', '本地优先存储', 'LLM 接入层', '部署方案', '对话拓扑引擎'],
+    productTitle: 'MindKit 技术架构设计文档',
+  },
+  // step 17 (增长飞轮完成) → 商业计划书
+  17: {
+    productIndex: 2,
+    notice: '📄 产物生成：基于「商业化」「定价策略」「开源社区」「增长飞轮」「用户画像」等节点的讨论，已自动汇总生成「MindKit 商业化方案」',
+    skillName: 'biz-plan-builder',
+    skillDesc: '整合商业分析节点，输出完整商业化方案',
+    sourceNodes: ['商业化', '定价策略', '开源社区', '增长飞轮', '用户画像'],
+    productTitle: 'MindKit 商业化方案',
+  },
+  // step 18 (上线路线图完成) → 上线路线图
+  18: {
+    productIndex: 3,
+    notice: '📄 产物生成：基于「落地计划」「极简 MVP」「上线路线图」等节点的讨论，已自动汇总生成「MindKit 上线路线图」',
+    skillName: 'roadmap-planner',
+    skillDesc: '规划里程碑与时间线，生成项目路线图',
+    sourceNodes: ['落地计划', '极简 MVP', '上线路线图'],
+    productTitle: 'MindKit 上线路线图',
+  },
+}
+
+/** 添加一个产物到 sp-1（演示用） */
+export function addSp1Product(productIndex: number) {
+  const prod = sp1Products[productIndex]
+  if (!prod) return
+  // 避免重复添加
+  if (mockProducts['sp-1'].some((p) => p.id === prod.id)) return
+  mockProducts['sp-1'].push({ ...prod })
+}
+
 const mockProducts: Record<string, Product[]> = {
-  'sp-1': [
-    { id: 'prod-1', type: 'PRD 文档', title: 'MindKit 产品需求文档 v0.1', summary: '基于多线程 AI 对话的思维协作工具，核心功能包括 Session Tree、拓扑可视化、跨节点意识', sourceNodeIds: ['s1-main', 's1-ux', 's1-backend'], content: '# MindKit PRD\n\n## 产品定位\nAI Native 思维协作工具...\n\n## 核心功能\n1. Session Tree 对话拓扑\n2. 多线程并行探索\n3. L1/L2/L3 三层记忆\n\n## 用户画像\n独立开发者和小团队 CTO', createdAt: '2026-04-08T12:00:00Z', updatedAt: '2026-04-09T10:00:00Z' },
-    { id: 'prod-2', type: '技术方案', title: '技术架构设计文档', summary: 'Hono + WS 后端架构，文件系统持久化，Stello SDK 集成方案', sourceNodeIds: ['s1-backend', 's1-db', 's1-api'], content: '# 技术架构\n\n## 后端\nHono + WebSocket\n\n## 存储\n文件系统持久化\n\n## AI\nStello SDK + RAG', createdAt: '2026-04-09T08:00:00Z', updatedAt: '2026-04-09T14:00:00Z' },
-  ],
+  'sp-1': [],  // 演示时动态添加
   'sp-2': [
     { id: 'prod-3', type: '架构评审报告', title: '微服务化改造评审报告', summary: '从单体到微服务的改造方案，涵盖服务拆分、基础设施、性能优化三大方向', sourceNodeIds: ['s2-main', 's2-micro', 's2-infra'], content: '# 架构评审报告\n\n## 现状分析\n单体架构瓶颈...\n\n## 改造方案\n按 DDD 边界拆分...', createdAt: '2026-04-07T16:00:00Z', updatedAt: '2026-04-09T09:00:00Z' },
   ],
@@ -859,18 +1218,26 @@ export async function getProducts(spaceId: string): Promise<{ products: Product[
 
 const mockEvents: Record<string, SpaceEvent[]> = {
   'sp-1': [
-    { id: 'evt-1', type: 'node_created', description: '创建核心构思节点，开始产品方向探索', nodeId: 's1-main', timestamp: '2026-04-08T09:00:00Z' },
-    { id: 'evt-2', type: 'node_created', description: '话题分裂：从核心构思中拆分出 UX 设计线', nodeId: 's1-ux', timestamp: '2026-04-08T09:10:00Z' },
-    { id: 'evt-3', type: 'node_created', description: '话题分裂：从核心构思中拆分出后端架构线', nodeId: 's1-backend', timestamp: '2026-04-08T09:20:00Z' },
-    { id: 'evt-4', type: 'l2_updated', description: 'UX 设计节点摘要更新：确定手绘涂鸦风格方案', nodeId: 's1-ux', timestamp: '2026-04-08T09:15:00Z' },
-    { id: 'evt-5', type: 'cross_node_link', description: '发现关联：后端架构引用了 UX 线的接口需求', nodeId: 's1-backend', relatedNodeIds: ['s1-ux'], timestamp: '2026-04-08T09:25:00Z' },
-    { id: 'evt-6', type: 'node_created', description: '话题分裂：从核心构思中拆分出 AI 能力线', nodeId: 's1-ai', timestamp: '2026-04-08T11:00:00Z' },
-    { id: 'evt-7', type: 'insight_generated', description: '全局洞察：UX 的移动端方案需要 API 做字段裁剪适配', nodeId: 's1-main', relatedNodeIds: ['s1-ux-mobile', 's1-api'], timestamp: '2026-04-08T10:15:00Z' },
-    { id: 'evt-8', type: 'product_created', description: '产物生成：MindKit 产品需求文档 v0.1', nodeId: 's1-main', timestamp: '2026-04-08T12:00:00Z' },
-    { id: 'evt-9', type: 'cross_node_link', description: '发现关联：RAG 检索方案依赖数据模型的 embedding 设计', nodeId: 's1-ai-rag', relatedNodeIds: ['s1-db'], timestamp: '2026-04-08T11:15:00Z' },
-    { id: 'evt-10', type: 'product_created', description: '产物生成：技术架构设计文档', nodeId: 's1-backend', timestamp: '2026-04-09T08:00:00Z' },
-    { id: 'evt-11', type: 'product_updated', description: '产物更新：PRD 补充了 AI 能力章节', nodeId: 's1-ai', timestamp: '2026-04-09T10:00:00Z' },
-    { id: 'evt-12', type: 'insight_generated', description: '全局洞察：Agent 编排框架可复用 RAG 的检索能力', nodeId: 's1-main', relatedNodeIds: ['s1-ai-agent', 's1-ai-rag'], timestamp: '2026-04-09T11:00:00Z' },
+    { id: 'evt-1', type: 'node_created', description: '创建 MindKit 根节点，开始商业化落地规划', nodeId: 's1-main', timestamp: '2026-04-09T09:00:00Z' },
+    { id: 'evt-2', type: 'node_created', description: '话题分裂：从 MindKit 中拆分出产品定位线', nodeId: 's1-pos', timestamp: '2026-04-09T09:10:00Z' },
+    { id: 'evt-3', type: 'node_created', description: '话题分裂：从 MindKit 中拆分出核心功能线', nodeId: 's1-feat', timestamp: '2026-04-09T09:20:00Z' },
+    { id: 'evt-4', type: 'node_created', description: '话题分裂：从 MindKit 中拆分出技术架构线', nodeId: 's1-arch', timestamp: '2026-04-09T09:40:00Z' },
+    { id: 'evt-5', type: 'node_created', description: '话题分裂：从产品定位中拆分出用户画像', nodeId: 's1-user', timestamp: '2026-04-09T09:30:00Z' },
+    { id: 'evt-6', type: 'l2_updated', description: '用户画像节点摘要更新：锁定独立开发者群体', nodeId: 's1-user', timestamp: '2026-04-09T09:38:00Z' },
+    { id: 'evt-7', type: 'node_created', description: '话题分裂：从核心功能中拆分出对话拓扑引擎', nodeId: 's1-topo', timestamp: '2026-04-09T10:30:00Z' },
+    { id: 'evt-8', type: 'node_created', description: '话题分裂：从产品定位中拆分出竞品分析', nodeId: 's1-comp', timestamp: '2026-04-09T10:00:00Z' },
+    { id: 'evt-9', type: 'cross_node_link', description: '发现关联：AI 自动分裂依赖对话拓扑引擎的节点管理', nodeId: 's1-split', relatedNodeIds: ['s1-topo'], timestamp: '2026-04-09T10:55:00Z' },
+    { id: 'evt-10', type: 'cross_node_link', description: '发现关联：差异化定位基于竞品分析的发现', nodeId: 's1-diff', relatedNodeIds: ['s1-comp'], timestamp: '2026-04-09T10:25:00Z' },
+    { id: 'evt-11', type: 'l2_updated', description: '竞品分析节点摘要更新：确认无竞品具备动态拓扑能力', nodeId: 's1-comp', timestamp: '2026-04-09T10:10:00Z' },
+    { id: 'evt-12', type: 'insight_generated', description: '全局洞察：用户画像中的付费意愿直接约束定价策略区间', nodeId: 's1-main', relatedNodeIds: ['s1-user', 's1-price'], timestamp: '2026-04-09T15:20:00Z' },
+    { id: 'evt-13', type: 'cross_node_link', description: '发现矛盾：部署方案的云端需求与本地优先存储冲突', nodeId: 's1-deploy', relatedNodeIds: ['s1-local'], timestamp: '2026-04-09T13:05:00Z' },
+    { id: 'evt-14', type: 'insight_generated', description: '全局洞察：开源策略可能稀释 Pro 版付费价值', nodeId: 's1-main', relatedNodeIds: ['s1-oss', 's1-price'], timestamp: '2026-04-09T16:20:00Z' },
+    { id: 'evt-15', type: 'cross_node_link', description: '发现矛盾：MVP 砍功能与核心功能完整规划冲突', nodeId: 's1-mvp', relatedNodeIds: ['s1-feat'], timestamp: '2026-04-09T15:03:00Z' },
+    { id: 'evt-16', type: 'product_created', description: '产物生成：MindKit 产品需求文档 v0.1', nodeId: 's1-main', timestamp: '2026-04-09T12:00:00Z' },
+    { id: 'evt-17', type: 'product_created', description: '产物生成：技术架构设计文档', nodeId: 's1-arch', timestamp: '2026-04-09T14:00:00Z' },
+    { id: 'evt-18', type: 'product_created', description: '产物生成：MindKit 商业计划书', nodeId: 's1-biz', timestamp: '2026-04-09T15:30:00Z' },
+    { id: 'evt-19', type: 'product_created', description: '产物生成：上线路线图', nodeId: 's1-plan', timestamp: '2026-04-09T16:00:00Z' },
+    { id: 'evt-20a', type: 'insight_generated', description: '全局洞察：增长飞轮的模板分享机制可反哺开源社区生态', nodeId: 's1-main', relatedNodeIds: ['s1-growth', 's1-oss'], timestamp: '2026-04-09T16:40:00Z' },
   ],
   'sp-2': [
     { id: 'evt-20', type: 'node_created', description: '创建架构总览节点', nodeId: 's2-main', timestamp: '2026-04-07T14:00:00Z' },
@@ -899,9 +1266,13 @@ export async function getEvents(spaceId: string): Promise<{ events: SpaceEvent[]
 
 const mockInsights: Record<string, Insight[]> = {
   'sp-1': [
-    { id: 'ins-1', content: 'UX 的移动端适配方案与 API 设计需要对齐——移动端需要字段裁剪和分页，建议 API 层统一处理', sourceNodeIds: ['s1-ux-mobile', 's1-api'], sourceLabels: ['移动端适配', 'API 设计'], timestamp: '2026-04-08T10:15:00Z' },
-    { id: 'ins-2', content: 'RAG 检索的 embedding 方案直接依赖数据模型设计，建议两条线对齐 chunk 粒度和索引策略', sourceNodeIds: ['s1-ai-rag', 's1-db'], sourceLabels: ['RAG 检索', '数据模型'], timestamp: '2026-04-08T11:15:00Z' },
-    { id: 'ins-3', content: 'Agent 编排可复用 RAG 的向量检索能力作为内置工具，避免重复开发', sourceNodeIds: ['s1-ai-agent', 's1-ai-rag'], sourceLabels: ['Agent 编排', 'RAG 检索'], timestamp: '2026-04-09T11:00:00Z' },
+    { id: 'ins-1', content: '「用户画像」中确定的独立开发者定位直接影响「定价策略」的价格区间设定（$15-25/月）', sourceNodeIds: ['s1-user', 's1-price'], sourceLabels: ['用户画像', '定价策略'], timestamp: '2026-04-09T15:20:00Z' },
+    { id: 'ins-2', content: '「竞品分析」发现市面工具均缺少动态拓扑能力，这构成了「差异化定位」的核心壁垒', sourceNodeIds: ['s1-comp', 's1-diff'], sourceLabels: ['竞品分析', '差异化定位'], timestamp: '2026-04-09T15:35:00Z' },
+    { id: 'ins-3', content: '「部署方案」的云端同步需求与「本地优先存储」的架构原则存在根本矛盾，需要 hybrid 方案', sourceNodeIds: ['s1-deploy', 's1-local'], sourceLabels: ['部署方案', '本地优先存储'], timestamp: '2026-04-09T16:00:00Z' },
+    { id: 'ins-4', content: '「开源社区」的开放策略可能稀释「定价策略」中 Pro 版的付费价值，需要明确开源边界', sourceNodeIds: ['s1-oss', 's1-price'], sourceLabels: ['开源社区', '定价策略'], timestamp: '2026-04-09T16:20:00Z' },
+    { id: 'ins-5', content: '「AI 自动分裂」依赖「对话拓扑引擎」的实时布局能力，两者需要同步开发迭代', sourceNodeIds: ['s1-split', 's1-topo'], sourceLabels: ['AI 自动分裂', '对话拓扑引擎'], timestamp: '2026-04-09T15:50:00Z' },
+    { id: 'ins-6', content: '「极简 MVP」砍掉了「核心功能」中的跨节点洞察，但这恰恰是差异化卖点，需要权衡取舍', sourceNodeIds: ['s1-mvp', 's1-feat'], sourceLabels: ['极简 MVP', '核心功能'], timestamp: '2026-04-09T16:30:00Z' },
+    { id: 'ins-7', content: '「增长飞轮」的模板分享机制可以反哺「开源社区」生态，形成正向循环', sourceNodeIds: ['s1-growth', 's1-oss'], sourceLabels: ['增长飞轮', '开源社区'], timestamp: '2026-04-09T16:40:00Z' },
   ],
   'sp-2': [
     { id: 'ins-4', content: '性能优化的缓存层设计需要等消息队列选型确定后再展开，因为缓存失效策略依赖事件驱动', sourceNodeIds: ['s2-perf-cache', 's2-micro-mq'], sourceLabels: ['缓存策略', '消息队列'], timestamp: '2026-04-07T15:25:00Z' },

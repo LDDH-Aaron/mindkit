@@ -115,6 +115,7 @@ export interface LayoutNode {
   children: string[]
   parentId?: string
   sourceSessionId?: string
+  conflictSessionId?: string
   activationStatus?: 'activated' | 'inactive' | 'user-extended'
 }
 
@@ -123,6 +124,7 @@ interface TreeInput {
   id: string
   label: string
   sourceSessionId?: string
+  conflictSessionId?: string
   activationStatus?: 'activated' | 'inactive' | 'user-extended'
   turnCount: number
   children: TreeInput[]
@@ -151,7 +153,7 @@ export function computeLayout(
 ): LayoutNode[] {
   const nodes: LayoutNode[] = []
   const cx = width / 2, cy = height / 2
-  const ringSpacing = Math.min(width, height) / 5
+  const ringSpacing = Math.min(width, height) / 6
 
   interface QueueItem {
     node: TreeInput
@@ -202,7 +204,7 @@ export function computeLayout(
       : (sr - 0.5) * 0.3
     const jitterR = (seededRandom(node.id + '_r') - 0.5) * 16
 
-    const radius = layer === 0 ? 0 : ringSpacing * (0.7 + layer * 0.55) + jitterR
+    const radius = layer === 0 ? 0 : ringSpacing * (0.7 + layer * 0.45) + jitterR
     const x = layer === 0 ? cx : parentX + Math.cos(angle + jitterAngle) * radius
     const y = layer === 0 ? cy : parentY + Math.sin(angle + jitterAngle) * radius
     // 核心节点更大，层级越深越小
@@ -217,6 +219,7 @@ export function computeLayout(
       children: (node.children || []).map((c: TreeInput) => c.id),
       parentId,
       sourceSessionId: node.sourceSessionId,
+      conflictSessionId: node.conflictSessionId,
       activationStatus: node.activationStatus,
     })
 

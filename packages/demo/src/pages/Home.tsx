@@ -54,10 +54,12 @@ function Modal({
         className={`relative w-full mx-4 rounded-lg ${wide ? 'max-w-2xl' : 'max-w-md'}`}
         style={{
           background: 'var(--color-paper)',
-          border: '1.5px solid var(--color-ink)',
-          padding: '28px 32px',
+          border: '1px solid rgba(42,42,42,0.12)',
+          padding: '32px 32px 36px',
           boxShadow: '4px 4px 20px rgba(0,0,0,0.08)',
-          transform: 'rotate(-0.3deg)'
+          transform: 'rotate(-0.3deg)',
+          maxHeight: '85vh',
+          overflowY: 'auto'
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -229,20 +231,7 @@ function stickyStyle(
   }
 }
 
-const EMOJI_OPTIONS = [
-  '💡',
-  '🧠',
-  '⚙️',
-  '📊',
-  '🎯',
-  '🚀',
-  '📝',
-  '🎨',
-  '🔬',
-  '🌟',
-  '📦',
-  '🛠️'
-]
+const EMOJI_OPTIONS = ['💡', '🧠', '⚙️', '📊', '🎯', '🚀']
 const COLOR_OPTIONS = [
   '#3a6bc5',
   '#c94a4a',
@@ -1015,7 +1004,7 @@ export function Home() {
                       }}
                     >
                       <GitFork size={16} />
-                      Fork
+                      应用
                     </button>
                   </div>
                 </div>
@@ -1405,7 +1394,7 @@ export function Home() {
               className="text-[24px] font-bold mb-1"
               style={{ ...handFont, color: 'var(--color-ink)' }}
             >
-              Fork Kit
+              应用 Kit
             </h2>
             <p
               className="mb-4"
@@ -1438,12 +1427,10 @@ export function Home() {
               className="w-full py-2.5 rounded-md border-none cursor-pointer transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
               style={{
                 ...handFont,
-                fontSize: 18,
-                background: 'var(--color-blue-pen)',
-                color: '#fff'
+                fontSize: 18
               }}
             >
-              {forking ? 'Forking...' : 'Fork to My Space'}
+              {forking ? 'Forking...' : '应用到我的空间'}
             </button>
           </>
         )}

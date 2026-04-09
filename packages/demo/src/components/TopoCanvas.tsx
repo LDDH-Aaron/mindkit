@@ -12,17 +12,28 @@ interface TopoCanvasProps {
   tree: SessionTreeNode[]
   activeNodeId?: string | null
   onNodeClick?: (id: string) => void
+  /** 受控缩放值 */
+  zoom?: number
+  /** 缩放变更回调 */
+  onZoomChange?: (z: number) => void
+  /** 平滑聚焦到某节点（变化时触发动画） */
+  focusNodeId?: string | null
 }
 
 export function TopoCanvas({
   spaceId,
   tree,
   activeNodeId,
-  onNodeClick
+  onNodeClick,
+  zoom: controlledZoom,
+  onZoomChange,
+  focusNodeId
 }: TopoCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [nodes, setNodes] = useState<LayoutNode[]>([])
+  const targetNodes = useRef<LayoutNode[]>([])
+  const animatingRef = useRef(false)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [tooltip, setTooltip] = useState<{
     x: number
@@ -37,6 +48,15 @@ export function TopoCanvas({
 
   // 画布平移状态
   const [pan, setPan] = useState({ x: 0, y: 0 })
+  const [localZoom, setLocalZoom] = useState(1)
+  const isZoomControlled = controlledZoom !== undefined
+  const zoom = isZoomControlled ? controlledZoom : localZoom
+  const setZoom = isZoomControlled
+    ? (v: number | ((prev: number) => number)) => {
+        const next = typeof v === 'function' ? v(zoom) : v
+        onZoomChange?.(next)
+      }
+    : setLocalZoom
   const dragging = useRef(false)
   const dragStart = useRef({ x: 0, y: 0 })
   const panStart = useRef({ x: 0, y: 0 })
@@ -56,6 +76,52 @@ export function TopoCanvas({
     turnCountMap.current = map
   }, [tree])
 
+  // 位置插值动画
+  const startAnimation = useCallback(() => {
+    if (animatingRef.current) return
+    animatingRef.current = true
+    const duration = 500 // ms
+    const startTime = performance.now()
+    // 快照当前位置
+    const startPos = new Map(nodes.map((n) => [n.id, { x: n.x, y: n.y }]))
+
+    const tick = (now: number) => {
+      const t = Math.min((now - startTime) / duration, 1)
+      // ease-out cubic
+      const ease = 1 - Math.pow(1 - t, 3)
+      const targets = targetNodes.current
+      const interpolated = targets.map((target) => {
+        const start = startPos.get(target.id)
+        if (!start) {
+          // 新节点：从父节点位置滑出
+          const parent = targets.find((n) => n.id === target.parentId)
+          const fromX = parent ? (startPos.get(parent.id)?.x ?? parent.x) : target.x
+          const fromY = parent ? (startPos.get(parent.id)?.y ?? parent.y) : target.y
+          return {
+            ...target,
+            x: fromX + (target.x - fromX) * ease,
+            y: fromY + (target.y - fromY) * ease
+          }
+        }
+        return {
+          ...target,
+          x: start.x + (target.x - start.x) * ease,
+          y: start.y + (target.y - start.y) * ease
+        }
+      })
+      setNodes(interpolated)
+      if (t < 1) {
+        requestAnimationFrame(tick)
+      } else {
+        animatingRef.current = false
+      }
+    }
+    requestAnimationFrame(tick)
+  }, [nodes])
+
+  const startAnimationRef = useRef(startAnimation)
+  startAnimationRef.current = startAnimation
+
   // 重新计算布局（tree 变化或容器尺寸变化时）
   const reLayout = useCallback(() => {
     const el = containerRef.current
@@ -63,8 +129,18 @@ export function TopoCanvas({
     const { width, height } = el.getBoundingClientRect()
     if (width === 0 || height === 0) return
     const layout = computeLayout(tree, width, height)
-    setNodes(layout)
-    setPan({ x: 0, y: 0 })
+    targetNodes.current = layout
+
+    const isFirst = knownNodeIds.current.size === 0
+    if (isFirst) {
+      // 首次：直接设置位置，重置视角
+      setNodes(layout)
+      setPan({ x: 0, y: 0 })
+      setZoom(1)
+    } else {
+      // 后续：启动过渡动画
+      startAnimationRef.current()
+    }
 
     // 检测新节点
     const currentIds = new Set(layout.map((n) => n.id))
@@ -93,12 +169,43 @@ export function TopoCanvas({
     return () => ro.disconnect()
   }, [reLayout])
 
+  // 平滑聚焦到指定节点（将其移动到视口中心）
+  const prevFocusRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!focusNodeId || focusNodeId === prevFocusRef.current) return
+    prevFocusRef.current = focusNodeId
+    const node = nodes.find((n) => n.id === focusNodeId)
+    const el = containerRef.current
+    if (!node || !el) return
+    const { width, height } = el.getBoundingClientRect()
+    // 目标 pan：让节点在视口中心
+    const targetPan = {
+      x: width / 2 - node.x * zoom,
+      y: height / 2 - node.y * zoom
+    }
+    // 动画插值
+    const startPan = { ...pan }
+    const duration = 600
+    const startTime = performance.now()
+    const tick = (now: number) => {
+      const t = Math.min((now - startTime) / duration, 1)
+      const ease = 1 - Math.pow(1 - t, 3) // ease-out cubic
+      setPan({
+        x: startPan.x + (targetPan.x - startPan.x) * ease,
+        y: startPan.y + (targetPan.y - startPan.y) * ease
+      })
+      if (t < 1) requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusNodeId, nodes.length])
+
   // 屏幕坐标 → 画布坐标
   const toCanvas = useCallback(
     (screenX: number, screenY: number) => {
-      return { x: screenX - pan.x, y: screenY - pan.y }
+      return { x: (screenX - pan.x) / zoom, y: (screenY - pan.y) / zoom }
     },
-    [pan]
+    [pan, zoom]
   )
 
   // 渲染 Canvas
@@ -116,64 +223,89 @@ export function TopoCanvas({
     ctx.scale(dpr, dpr)
     ctx.clearRect(0, 0, rect.width, rect.height)
 
-    // 应用平移
+    // 应用平移和缩放
     ctx.save()
     ctx.translate(pan.x, pan.y)
+    ctx.scale(zoom, zoom)
 
     const nodeMap = new Map(nodes.map((n) => [n.id, n]))
 
     // 绘制实线：parent-child 直接关联（跳过正在动画的新节点）
+    // 连线在节点边缘截断，不穿过节点中心
     for (const node of nodes) {
       if (newNodeIds.has(node.id)) continue
       if (node.parentId) {
         const parent = nodeMap.get(node.parentId)
         if (parent) {
+          const dx = node.x - parent.x
+          const dy = node.y - parent.y
+          const dist = Math.sqrt(dx * dx + dy * dy)
+          if (dist < (parent.r + node.r + 4)) continue // 太近就不画
+          const ux = dx / dist, uy = dy / dist
+          const x1 = parent.x + ux * (parent.r + 4)
+          const y1 = parent.y + uy * (parent.r + 4)
+          const x2 = node.x - ux * (node.r + 4)
+          const y2 = node.y - uy * (node.r + 4)
           ctx.save()
           ctx.strokeStyle = 'rgba(34,34,34,0.35)'
           ctx.lineWidth = 1.5
           ctx.setLineDash([])
-          wobblyLine(ctx, parent.x, parent.y, node.x, node.y, 1.5)
+          wobblyLine(ctx, x1, y1, x2, y2, 1.5)
           ctx.restore()
         }
       }
     }
 
-    // 绘制虚曲线：sourceSessionId 跨分支引用（L1 全局意识）
+    // 绘制跨分支虚曲线（蓝色=关联，红色=矛盾）
+    // 起止点在节点边缘截断
+    const crossLinks: { sourceId: string; targetNode: typeof nodes[0]; type: 'relate' | 'conflict' }[] = []
     for (const node of nodes) {
       if (node.sourceSessionId && node.sourceSessionId !== node.parentId) {
-        const source = nodeMap.get(node.sourceSessionId)
-        if (source) {
-          ctx.save()
-          ctx.strokeStyle = 'rgba(58,107,197,0.3)'
-          ctx.lineWidth = 1
-          ctx.setLineDash([6, 4])
-          // 用贝塞尔曲线代替直线，控制点偏移到垂直方向
-          const mx = (source.x + node.x) / 2
-          const my = (source.y + node.y) / 2
-          const dx = node.x - source.x
-          const dy = node.y - source.y
-          const len = Math.sqrt(dx * dx + dy * dy)
-          // 垂直方向偏移，弧度随距离缩放
-          const offset = Math.min(len * 0.7, 200)
-          const nx = -dy / (len || 1)
-          const ny = dx / (len || 1)
-          const cpx = mx + nx * offset
-          const cpy = my + ny * offset
-          ctx.beginPath()
-          ctx.moveTo(source.x, source.y)
-          ctx.quadraticCurveTo(cpx, cpy, node.x, node.y)
-          ctx.stroke()
-          ctx.setLineDash([])
-          // L1 标签放在曲线中点（即控制点与中点的中间）
-          const labelX = (mx + cpx) / 2
-          const labelY = (my + cpy) / 2
-          ctx.font = '11px "Coming Soon", cursive'
-          ctx.fillStyle = 'rgba(58,107,197,0.4)'
-          ctx.textAlign = 'center'
-          ctx.fillText('L1', labelX, labelY - 4)
-          ctx.restore()
-        }
+        crossLinks.push({ sourceId: node.sourceSessionId, targetNode: node, type: 'relate' })
       }
+      if (node.conflictSessionId && node.conflictSessionId !== node.parentId) {
+        crossLinks.push({ sourceId: node.conflictSessionId, targetNode: node, type: 'conflict' })
+      }
+    }
+    for (const link of crossLinks) {
+      const source = nodeMap.get(link.sourceId)
+      const node = link.targetNode
+      if (!source) continue
+      const dx = node.x - source.x
+      const dy = node.y - source.y
+      const len = Math.sqrt(dx * dx + dy * dy)
+      if (len < (source.r + node.r + 4)) continue
+      const ux = dx / (len || 1), uy = dy / (len || 1)
+      const sx = source.x + ux * (source.r + 4)
+      const sy = source.y + uy * (source.r + 4)
+      const ex = node.x - ux * (node.r + 4)
+      const ey = node.y - uy * (node.r + 4)
+      const isConflict = link.type === 'conflict'
+      ctx.save()
+      ctx.strokeStyle = isConflict ? 'rgba(201,74,74,0.25)' : 'rgba(58,107,197,0.2)'
+      ctx.lineWidth = 0.8
+      ctx.setLineDash([4, 4])
+      const mx = (sx + ex) / 2
+      const my = (sy + ey) / 2
+      // 小弧度，避免线条飞太远
+      const offset = Math.min(len * 0.15, 40)
+      const nx = -dy / (len || 1)
+      const ny = dx / (len || 1)
+      const cpx = mx + nx * offset
+      const cpy = my + ny * offset
+      ctx.beginPath()
+      ctx.moveTo(sx, sy)
+      ctx.quadraticCurveTo(cpx, cpy, ex, ey)
+      ctx.stroke()
+      ctx.setLineDash([])
+      // 标签放在曲线中点
+      const labelX = mx * 0.5 + cpx * 0.5
+      const labelY = my * 0.5 + cpy * 0.5
+      ctx.font = '10px "Coming Soon", cursive'
+      ctx.fillStyle = isConflict ? 'rgba(201,74,74,0.4)' : 'rgba(58,107,197,0.35)'
+      ctx.textAlign = 'center'
+      ctx.fillText(isConflict ? '矛盾' : '关联', labelX, labelY - 3)
+      ctx.restore()
     }
 
     // 绘制节点（跳过正在动画的新节点）
@@ -201,13 +333,41 @@ export function TopoCanvas({
       )
     }
 
-    // 绘制标签（跳过正在动画的新节点）
+    // 绘制标签（跳过正在动画的新节点）— 带碰撞检测避免重叠
+    const labelBoxes: { x: number; y: number; w: number; h: number; idx: number }[] = []
+    const labelData: { node: LayoutNode; text: string; fontSize: number; baseY: number }[] = []
+
     for (const node of nodes) {
       if (newNodeIds.has(node.id)) continue
+      const isCore = !node.parentId
+      const fontSize = isCore ? 18 : 14
+      const text = node.label || node.id.slice(0, 6)
+      ctx.font = `${fontSize}px "Caveat", cursive`
+      const tw = ctx.measureText(text).width
+      const baseY = node.y + node.r + (isCore ? 22 : 16)
+      labelData.push({ node, text, fontSize, baseY })
+      labelBoxes.push({ x: node.x - tw / 2, y: baseY - fontSize, w: tw, h: fontSize + 4, idx: labelBoxes.length })
+    }
+
+    // 简单碰撞偏移：如果两个标签重叠，把后面的往下推
+    for (let i = 0; i < labelBoxes.length; i++) {
+      for (let j = i + 1; j < labelBoxes.length; j++) {
+        const a = labelBoxes[i], b = labelBoxes[j]
+        if (a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y) {
+          // 重叠：把 b 往下推
+          const shift = a.y + a.h - b.y + 2
+          b.y += shift
+          labelData[j].baseY += shift
+        }
+      }
+    }
+
+    for (let i = 0; i < labelData.length; i++) {
+      const { node, text, fontSize, baseY } = labelData[i]
       const isActive = activeNodeId === node.id
       const isCore = !node.parentId
       const isInactive = node.activationStatus === 'inactive'
-      ctx.font = isCore ? '18px "Caveat", cursive' : '14px "Caveat", cursive'
+      ctx.font = `${fontSize}px "Caveat", cursive`
       ctx.textAlign = 'center'
       ctx.fillStyle = isInactive
         ? 'rgba(34,34,34,0.2)'
@@ -216,15 +376,11 @@ export function TopoCanvas({
           : isCore
             ? 'rgba(34,34,34,0.7)'
             : 'rgba(34,34,34,0.5)'
-      ctx.fillText(
-        node.label || node.id.slice(0, 6),
-        node.x,
-        node.y + node.r + (isCore ? 22 : 16)
-      )
+      ctx.fillText(text, node.x, baseY)
     }
 
-    ctx.restore() // 恢复平移
-  }, [nodes, hoveredId, activeNodeId, pan, newNodeIds])
+    ctx.restore() // 恢复平移和缩放
+  }, [nodes, hoveredId, activeNodeId, pan, zoom, newNodeIds])
 
   useEffect(() => {
     render()
@@ -259,6 +415,38 @@ export function TopoCanvas({
     },
     [nodes, toCanvas]
   )
+
+  // 鼠标滚轮缩放（以鼠标位置为中心）
+  const handleWheel = useCallback(
+    (e: WheelEvent) => {
+      e.preventDefault()
+      const rect = canvasRef.current?.getBoundingClientRect()
+      if (!rect) return
+      const mx = e.clientX - rect.left
+      const my = e.clientY - rect.top
+      const step = 0.02
+      const direction = e.deltaY > 0 ? -step : step
+      setZoom((prev) => {
+        const next = Math.min(2.0, Math.max(0.3, prev + direction))
+        // 调整 pan 使缩放以鼠标位置为中心
+        const scale = next / prev
+        setPan((p) => ({
+          x: mx - scale * (mx - p.x),
+          y: my - scale * (my - p.y)
+        }))
+        return next
+      })
+    },
+    []
+  )
+
+  // 绑定 wheel 事件（passive: false 以支持 preventDefault）
+  useEffect(() => {
+    const el = canvasRef.current
+    if (!el) return
+    el.addEventListener('wheel', handleWheel, { passive: false })
+    return () => el.removeEventListener('wheel', handleWheel)
+  }, [handleWheel])
 
   // 拖拽开始
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -344,16 +532,26 @@ export function TopoCanvas({
       {Array.from(newNodeIds).map((id) => {
         const node = nodes.find((n) => n.id === id)
         if (!node) return null
-        const cx = node.x + pan.x
-        const cy = node.y + pan.y
+        const cx = node.x * zoom + pan.x
+        const cy = node.y * zoom + pan.y
         const parent = node.parentId
           ? nodes.find((n) => n.id === node.parentId)
           : null
-        const px = parent ? parent.x + pan.x : cx
-        const py = parent ? parent.y + pan.y : cy
+        const px = parent ? parent.x * zoom + pan.x : cx
+        const py = parent ? parent.y * zoom + pan.y : cy
         const dx = cx - px
         const dy = cy - py
-        const lineLen = Math.sqrt(dx * dx + dy * dy)
+        const dist = Math.sqrt(dx * dx + dy * dy)
+        // 截断后的起止点（不穿过节点）
+        const parentR = parent ? parent.r * zoom : 0
+        const nodeRScaled = node.r * zoom
+        const ux = dist > 0 ? dx / dist : 0
+        const uy = dist > 0 ? dy / dist : 0
+        const lx1 = px + ux * (parentR + 4)
+        const ly1 = py + uy * (parentR + 4)
+        const lx2 = cx - ux * (nodeRScaled + 4)
+        const ly2 = cy - uy * (nodeRScaled + 4)
+        const lineLen = Math.sqrt((lx2 - lx1) ** 2 + (ly2 - ly1) ** 2)
         const lineDur = 1000   // 线生长时长 ms
         const labelDelay = 800 // 标签在线快到终点时浮现
         return (
@@ -362,14 +560,14 @@ export function TopoCanvas({
             className="pointer-events-none z-20"
             style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: '100%' }}
           >
-            {/* 连线从父节点缓慢生长到子节点 */}
+            {/* 连线从父节点边缘缓慢生长到子节点边缘 */}
             {parent && lineLen > 0 && (
               <svg
                 className="absolute inset-0 w-full h-full pointer-events-none"
                 style={{ overflow: 'visible' }}
               >
                 <line
-                  x1={px} y1={py} x2={cx} y2={cy}
+                  x1={lx1} y1={ly1} x2={lx2} y2={ly2}
                   stroke={node.color}
                   strokeWidth="1.5"
                   strokeLinecap="round"
@@ -403,7 +601,7 @@ export function TopoCanvas({
               style={{
                 position: 'absolute',
                 left: cx - 60,
-                top: cy + node.r + 4,
+                top: cy + node.r * zoom + 4,
                 width: 120,
                 textAlign: 'center',
                 fontFamily: '"Caveat", cursive',
@@ -456,14 +654,21 @@ export function TopoCanvas({
             className="inline-block w-6 h-[2px] rounded-sm"
             style={{ background: 'rgba(34,34,34,0.35)' }}
           />
-          direct (parent → child)
+          直接关系 (parent → child)
         </div>
         <div className="flex items-center gap-2">
           <span
             className="inline-block w-6 h-0 border-t-[1.5px] border-dashed"
             style={{ borderColor: 'rgba(58,107,197,0.4)', width: 24 }}
           />
-          L1 awareness
+          关联
+        </div>
+        <div className="flex items-center gap-2">
+          <span
+            className="inline-block w-6 h-0 border-t-[1.5px] border-dashed"
+            style={{ borderColor: 'rgba(201,74,74,0.5)', width: 24 }}
+          />
+          矛盾
         </div>
       </div>
 
@@ -565,17 +770,39 @@ export function TopoCanvas({
         </div>
       )}
 
-      {/* 风格标签 */}
-      <div
-        className="absolute bottom-5 right-6 z-10 pointer-events-none"
-        style={{
-          fontFamily: 'var(--font-hand-sm)',
-          fontSize: 12,
-          color: 'rgba(34,34,34,0.15)'
-        }}
-      >
-        MindKit — clean doodle
-      </div>
+      {/* 缩放指示器（仅非受控模式显示） */}
+      {!isZoomControlled && (
+        <div
+          className="absolute bottom-5 right-6 z-10 cursor-pointer select-none"
+          onClick={() => {
+            setZoom((prev: number) => {
+              const el = containerRef.current
+              if (!el) return 1
+              const { width, height } = el.getBoundingClientRect()
+              const cx = width / 2
+              const cy = height / 2
+              const scale = 1 / prev
+              setPan((p) => ({
+                x: cx - scale * (cx - p.x),
+                y: cy - scale * (cy - p.y)
+              }))
+              return 1
+            })
+          }}
+          title="点击重置为 100%"
+          style={{
+            fontFamily: 'var(--font-hand-sm)',
+            fontSize: 13,
+            color: 'var(--color-pencil)',
+            opacity: 0.6,
+            transition: 'opacity 0.2s'
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
+          onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.6')}
+        >
+          {Math.round(zoom * 100)}%
+        </div>
+      )}
     </div>
   )
 }

@@ -15,6 +15,10 @@ interface ChatPanelProps {
   insights?: Insight[]
   /** 点击洞察中的节点 */
   onInsightNodeClick?: (nodeId: string) => void
+  /** 受控输入值（自动演示用） */
+  controlledInput?: string
+  /** 受控输入变更（自动演示用） */
+  onControlledInputChange?: (v: string) => void
 }
 
 export function ChatPanel({
@@ -24,9 +28,14 @@ export function ChatPanel({
   activeTab = 'chat',
   l2Summary,
   insights = [],
-  onInsightNodeClick
+  onInsightNodeClick,
+  controlledInput,
+  onControlledInputChange
 }: ChatPanelProps) {
-  const [input, setInput] = useState('')
+  const [localInput, setLocalInput] = useState('')
+  const isControlled = controlledInput !== undefined
+  const input = isControlled ? controlledInput : localInput
+  const setInput = isControlled ? (v: string) => onControlledInputChange?.(v) : setLocalInput
   const messagesRef = useRef<HTMLDivElement>(null)
 
   // 自动滚动到底部
@@ -97,6 +106,30 @@ export function ChatPanel({
             )}
             {messages.map((msg, i) => {
               const isUser = msg.role === 'user'
+              // AI 回复根据内容变色
+              const hasConflict = !isUser && /矛盾|⚠️/.test(msg.content)
+              const hasRelate = !isUser && /关联/.test(msg.content)
+              const hasFork = !isUser && /分裂/.test(msg.content)
+              let aiBg = 'rgba(42,42,42,0.06)'
+              let aiBorder = '1.5px solid rgba(42,42,42,0.08)'
+              let aiColor = 'var(--color-ink)'
+              let aiTag = ''
+              if (hasConflict) {
+                aiBg = 'rgba(201,74,74,0.08)'
+                aiBorder = '1.5px solid rgba(201,74,74,0.18)'
+                aiColor = 'var(--color-red-pen)'
+                aiTag = '⚡ 矛盾'
+              } else if (hasRelate) {
+                aiBg = 'rgba(58,107,197,0.08)'
+                aiBorder = '1.5px solid rgba(58,107,197,0.18)'
+                aiColor = 'var(--color-blue-pen)'
+                aiTag = '🔗 关联'
+              } else if (hasFork) {
+                aiBg = 'rgba(91,168,91,0.08)'
+                aiBorder = '1.5px solid rgba(91,168,91,0.18)'
+                aiColor = 'var(--color-green-hl)'
+                aiTag = '🌿 分裂'
+              }
               return (
                 <div
                   key={i}
@@ -112,20 +145,38 @@ export function ChatPanel({
                         : '16px 16px 16px 4px',
                       background: isUser
                         ? 'rgba(58,107,197,0.12)'
-                        : 'rgba(42,42,42,0.06)',
+                        : aiBg,
                       border: isUser
                         ? '1.5px solid rgba(58,107,197,0.18)'
-                        : '1.5px solid rgba(42,42,42,0.08)',
+                        : aiBorder,
                       fontFamily: isUser
                         ? 'var(--font-hand)'
                         : 'var(--font-hand-alt)',
                       fontSize: isUser ? 15 : 14,
                       color: isUser
                         ? 'var(--color-blue-pen)'
-                        : 'var(--color-ink)',
+                        : aiColor,
                       lineHeight: 1.6
                     }}
                   >
+                    {aiTag && (
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          fontSize: 11,
+                          fontFamily: 'var(--font-hand-sm)',
+                          marginBottom: 4,
+                          padding: '1px 8px',
+                          borderRadius: 8,
+                          background: isUser ? undefined : `${aiColor}15`,
+                          color: aiColor,
+                          fontWeight: 600
+                        }}
+                      >
+                        {aiTag}
+                      </span>
+                    )}
+                    {aiTag && <br />}
                     {msg.content}
                   </div>
                 </div>
