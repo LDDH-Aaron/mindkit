@@ -1,5 +1,10 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
-import { wobblyLine, scribbleNode, computeLayout, type LayoutNode } from '../lib/doodle'
+import {
+  wobblyLine,
+  scribbleNode,
+  computeLayout,
+  type LayoutNode
+} from '../lib/doodle'
 import { getSessionL2, type SessionTreeNode } from '../lib/api'
 
 interface TopoCanvasProps {
@@ -9,12 +14,22 @@ interface TopoCanvasProps {
   onNodeClick?: (id: string) => void
 }
 
-export function TopoCanvas({ spaceId, tree, activeNodeId, onNodeClick }: TopoCanvasProps) {
+export function TopoCanvas({
+  spaceId,
+  tree,
+  activeNodeId,
+  onNodeClick
+}: TopoCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [nodes, setNodes] = useState<LayoutNode[]>([])
   const [hoveredId, setHoveredId] = useState<string | null>(null)
-  const [tooltip, setTooltip] = useState<{ x: number; y: number; label: string; l2: string | null } | null>(null)
+  const [tooltip, setTooltip] = useState<{
+    x: number
+    y: number
+    label: string
+    l2: string | null
+  } | null>(null)
   const l2Cache = useRef<Map<string, string | null>>(new Map())
   // 新节点动画追踪
   const knownNodeIds = useRef<Set<string>>(new Set())
@@ -52,7 +67,7 @@ export function TopoCanvas({ spaceId, tree, activeNodeId, onNodeClick }: TopoCan
     setPan({ x: 0, y: 0 })
 
     // 检测新节点
-    const currentIds = new Set(layout.map(n => n.id))
+    const currentIds = new Set(layout.map((n) => n.id))
     const fresh = new Set<string>()
     for (const id of currentIds) {
       if (!knownNodeIds.current.has(id)) fresh.add(id)
@@ -65,7 +80,9 @@ export function TopoCanvas({ spaceId, tree, activeNodeId, onNodeClick }: TopoCan
     }
   }, [tree])
 
-  useEffect(() => { reLayout() }, [reLayout])
+  useEffect(() => {
+    reLayout()
+  }, [reLayout])
 
   // 监听容器尺寸变化（抽屉展开/收起时触发）
   useEffect(() => {
@@ -77,9 +94,12 @@ export function TopoCanvas({ spaceId, tree, activeNodeId, onNodeClick }: TopoCan
   }, [reLayout])
 
   // 屏幕坐标 → 画布坐标
-  const toCanvas = useCallback((screenX: number, screenY: number) => {
-    return { x: screenX - pan.x, y: screenY - pan.y }
-  }, [pan])
+  const toCanvas = useCallback(
+    (screenX: number, screenY: number) => {
+      return { x: screenX - pan.x, y: screenY - pan.y }
+    },
+    [pan]
+  )
 
   // 渲染 Canvas
   const render = useCallback(() => {
@@ -100,7 +120,7 @@ export function TopoCanvas({ spaceId, tree, activeNodeId, onNodeClick }: TopoCan
     ctx.save()
     ctx.translate(pan.x, pan.y)
 
-    const nodeMap = new Map(nodes.map(n => [n.id, n]))
+    const nodeMap = new Map(nodes.map((n) => [n.id, n]))
 
     // 绘制实线：parent-child 直接关联
     for (const node of nodes) {
@@ -117,7 +137,7 @@ export function TopoCanvas({ spaceId, tree, activeNodeId, onNodeClick }: TopoCan
       }
     }
 
-    // 绘制虚线：sourceSessionId 跨分支引用（L1 全局意识）
+    // 绘制虚曲线：sourceSessionId 跨分支引用（L1 全局意识）
     for (const node of nodes) {
       if (node.sourceSessionId && node.sourceSessionId !== node.parentId) {
         const source = nodeMap.get(node.sourceSessionId)
@@ -126,14 +146,30 @@ export function TopoCanvas({ spaceId, tree, activeNodeId, onNodeClick }: TopoCan
           ctx.strokeStyle = 'rgba(58,107,197,0.3)'
           ctx.lineWidth = 1
           ctx.setLineDash([6, 4])
-          wobblyLine(ctx, source.x, source.y, node.x, node.y, 1)
-          ctx.setLineDash([])
+          // 用贝塞尔曲线代替直线，控制点偏移到垂直方向
           const mx = (source.x + node.x) / 2
           const my = (source.y + node.y) / 2
+          const dx = node.x - source.x
+          const dy = node.y - source.y
+          const len = Math.sqrt(dx * dx + dy * dy)
+          // 垂直方向偏移，弧度随距离缩放
+          const offset = Math.min(len * 0.7, 200)
+          const nx = -dy / (len || 1)
+          const ny = dx / (len || 1)
+          const cpx = mx + nx * offset
+          const cpy = my + ny * offset
+          ctx.beginPath()
+          ctx.moveTo(source.x, source.y)
+          ctx.quadraticCurveTo(cpx, cpy, node.x, node.y)
+          ctx.stroke()
+          ctx.setLineDash([])
+          // L1 标签放在曲线中点（即控制点与中点的中间）
+          const labelX = (mx + cpx) / 2
+          const labelY = (my + cpy) / 2
           ctx.font = '11px "Coming Soon", cursive'
           ctx.fillStyle = 'rgba(58,107,197,0.4)'
           ctx.textAlign = 'center'
-          ctx.fillText('L1', mx, my - 4)
+          ctx.fillText('L1', labelX, labelY - 4)
           ctx.restore()
         }
       }
@@ -147,9 +183,21 @@ export function TopoCanvas({ spaceId, tree, activeNodeId, onNodeClick }: TopoCan
       // 亮度映射：turnCount 越高越亮（0.5 ~ 1.0 范围）
       const tc = turnCountMap.current.get(node.id) || 0
       const activityAlpha = Math.min(1, 0.5 + tc * 0.1)
-      const baseAlpha = isInactive ? 0.3 : (isActive || isHovered) ? 1 : activityAlpha
+      const baseAlpha = isInactive
+        ? 0.3
+        : isActive || isHovered
+          ? 1
+          : activityAlpha
       const nodeColor = isInactive ? '#999999' : node.color
-      scribbleNode(ctx, node.x, node.y, node.r, nodeColor, baseAlpha, isActive || isHovered)
+      scribbleNode(
+        ctx,
+        node.x,
+        node.y,
+        node.r,
+        nodeColor,
+        baseAlpha,
+        isActive || isHovered
+      )
     }
 
     // 绘制标签
@@ -159,37 +207,56 @@ export function TopoCanvas({ spaceId, tree, activeNodeId, onNodeClick }: TopoCan
       const isInactive = node.activationStatus === 'inactive'
       ctx.font = isCore ? '18px "Caveat", cursive' : '14px "Caveat", cursive'
       ctx.textAlign = 'center'
-      ctx.fillStyle = isInactive ? 'rgba(34,34,34,0.2)' : (isActive || hoveredId === node.id) ? node.color : isCore ? 'rgba(34,34,34,0.7)' : 'rgba(34,34,34,0.5)'
-      ctx.fillText(node.label || node.id.slice(0, 6), node.x, node.y + node.r + (isCore ? 22 : 16))
+      ctx.fillStyle = isInactive
+        ? 'rgba(34,34,34,0.2)'
+        : isActive || hoveredId === node.id
+          ? node.color
+          : isCore
+            ? 'rgba(34,34,34,0.7)'
+            : 'rgba(34,34,34,0.5)'
+      ctx.fillText(
+        node.label || node.id.slice(0, 6),
+        node.x,
+        node.y + node.r + (isCore ? 22 : 16)
+      )
     }
 
     ctx.restore() // 恢复平移
   }, [nodes, hoveredId, activeNodeId, pan])
 
-  useEffect(() => { render() }, [render])
+  useEffect(() => {
+    render()
+  }, [render])
 
   // hover 时获取 L2
-  const fetchL2 = useCallback(async (nodeId: string) => {
-    if (l2Cache.current.has(nodeId)) return l2Cache.current.get(nodeId)!
-    try {
-      const { content } = await getSessionL2(spaceId, nodeId)
-      l2Cache.current.set(nodeId, content)
-      return content
-    } catch {
-      l2Cache.current.set(nodeId, null)
-      return null
-    }
-  }, [spaceId])
+  const fetchL2 = useCallback(
+    async (nodeId: string) => {
+      if (l2Cache.current.has(nodeId)) return l2Cache.current.get(nodeId)!
+      try {
+        const { content } = await getSessionL2(spaceId, nodeId)
+        l2Cache.current.set(nodeId, content)
+        return content
+      } catch {
+        l2Cache.current.set(nodeId, null)
+        return null
+      }
+    },
+    [spaceId]
+  )
 
   // 命中检测
-  const hitTest = useCallback((screenX: number, screenY: number): LayoutNode | null => {
-    const { x: cx, y: cy } = toCanvas(screenX, screenY)
-    for (const node of nodes) {
-      const dx = cx - node.x, dy = cy - node.y
-      if (dx * dx + dy * dy < (node.r + 6) ** 2) return node
-    }
-    return null
-  }, [nodes, toCanvas])
+  const hitTest = useCallback(
+    (screenX: number, screenY: number): LayoutNode | null => {
+      const { x: cx, y: cy } = toCanvas(screenX, screenY)
+      for (const node of nodes) {
+        const dx = cx - node.x,
+          dy = cy - node.y
+        if (dx * dx + dy * dy < (node.r + 6) ** 2) return node
+      }
+      return null
+    },
+    [nodes, toCanvas]
+  )
 
   // 拖拽开始
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -252,7 +319,7 @@ export function TopoCanvas({ spaceId, tree, activeNodeId, onNodeClick }: TopoCan
           repeating-linear-gradient(0deg, transparent, transparent 31px, rgba(180,200,230,0.12) 31px, rgba(180,200,230,0.12) 32px),
           repeating-linear-gradient(90deg, transparent, transparent 31px, rgba(180,200,230,0.12) 31px, rgba(180,200,230,0.12) 32px)
         `,
-        backgroundSize: 'auto, 32px 32px, 32px 32px',
+        backgroundSize: 'auto, 32px 32px, 32px 32px'
       }}
     >
       <canvas
@@ -261,13 +328,19 @@ export function TopoCanvas({ spaceId, tree, activeNodeId, onNodeClick }: TopoCan
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
-        onMouseLeave={() => { dragging.current = false; setHoveredId(null); setTooltip(null) }}
-        style={{ cursor: dragging.current ? 'grabbing' : hoveredId ? 'pointer' : 'grab' }}
+        onMouseLeave={() => {
+          dragging.current = false
+          setHoveredId(null)
+          setTooltip(null)
+        }}
+        style={{
+          cursor: dragging.current ? 'grabbing' : hoveredId ? 'pointer' : 'grab'
+        }}
       />
 
       {/* 新节点分裂动画 */}
-      {Array.from(newNodeIds).map(id => {
-        const node = nodes.find(n => n.id === id)
+      {Array.from(newNodeIds).map((id) => {
+        const node = nodes.find((n) => n.id === id)
         if (!node) return null
         return (
           <div
@@ -280,14 +353,17 @@ export function TopoCanvas({ spaceId, tree, activeNodeId, onNodeClick }: TopoCan
               height: 48,
               borderRadius: '50%',
               border: `2px solid ${node.color}`,
-              animation: 'nodeSpawn 0.6s ease-out forwards',
+              animation: 'nodeSpawn 0.6s ease-out forwards'
             }}
           />
         )
       })}
 
       {/* 标题 */}
-      <div className="absolute top-5 left-6 z-10 pointer-events-none" style={{ transform: 'rotate(-2deg)' }}>
+      <div
+        className="absolute top-5 left-6 z-10 pointer-events-none"
+        style={{ transform: 'rotate(-2deg)' }}
+      >
         <h1
           className="text-[32px] font-bold relative"
           style={{ fontFamily: 'var(--font-hand)', color: 'var(--color-ink)' }}
@@ -299,7 +375,7 @@ export function TopoCanvas({ spaceId, tree, activeNodeId, onNodeClick }: TopoCan
               border: '2px solid var(--color-red-pen)',
               borderRadius: '55% 45% 50% 50% / 45% 55% 45% 55%',
               opacity: 0.3,
-              transform: 'rotate(2deg)',
+              transform: 'rotate(2deg)'
             }}
           />
         </h1>
@@ -313,43 +389,73 @@ export function TopoCanvas({ spaceId, tree, activeNodeId, onNodeClick }: TopoCan
           fontSize: 13,
           color: 'var(--color-pencil)',
           lineHeight: 2,
-          transform: 'rotate(1deg)',
+          transform: 'rotate(1deg)'
         }}
       >
         <div className="flex items-center gap-2">
-          <span className="inline-block w-6 h-[2px] rounded-sm" style={{ background: 'rgba(34,34,34,0.35)' }} />
+          <span
+            className="inline-block w-6 h-[2px] rounded-sm"
+            style={{ background: 'rgba(34,34,34,0.35)' }}
+          />
           direct (parent → child)
         </div>
         <div className="flex items-center gap-2">
-          <span className="inline-block w-6 h-0 border-t-[1.5px] border-dashed" style={{ borderColor: 'rgba(58,107,197,0.4)', width: 24 }} />
+          <span
+            className="inline-block w-6 h-0 border-t-[1.5px] border-dashed"
+            style={{ borderColor: 'rgba(58,107,197,0.4)', width: 24 }}
+          />
           L1 awareness
         </div>
       </div>
 
       {/* 模板进度 */}
-      {nodes.some(n => n.activationStatus) && (() => {
-        const total = nodes.filter(n => n.activationStatus === 'activated' || n.activationStatus === 'inactive').length
-        const activated = nodes.filter(n => n.activationStatus === 'activated').length
-        const done = total > 0 && activated >= total
-        return (
-          <div
-            className="absolute top-5 right-6 z-10 pointer-events-none"
-            style={{ fontFamily: 'var(--font-hand-sm)', fontSize: 14, color: 'var(--color-pencil)' }}
-          >
-            <div className="flex items-center gap-2">
-              <span style={{ color: done ? 'var(--color-green-hl)' : 'var(--color-blue-pen)', fontWeight: 600 }}>
-                {activated} / {total}
-              </span>
-              <span>节点已完成</span>
-            </div>
-            {done && (
-              <div style={{ fontSize: 12, color: 'var(--color-green-hl)', marginTop: 2 }}>
-                ✓ 已完成基础流程
+      {nodes.some((n) => n.activationStatus) &&
+        (() => {
+          const total = nodes.filter(
+            (n) =>
+              n.activationStatus === 'activated' ||
+              n.activationStatus === 'inactive'
+          ).length
+          const activated = nodes.filter(
+            (n) => n.activationStatus === 'activated'
+          ).length
+          const done = total > 0 && activated >= total
+          return (
+            <div
+              className="absolute top-5 right-6 z-10 pointer-events-none"
+              style={{
+                fontFamily: 'var(--font-hand-sm)',
+                fontSize: 14,
+                color: 'var(--color-pencil)'
+              }}
+            >
+              <div className="flex items-center gap-2">
+                <span
+                  style={{
+                    color: done
+                      ? 'var(--color-green-hl)'
+                      : 'var(--color-blue-pen)',
+                    fontWeight: 600
+                  }}
+                >
+                  {activated} / {total}
+                </span>
+                <span>节点已完成</span>
               </div>
-            )}
-          </div>
-        )
-      })()}
+              {done && (
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: 'var(--color-green-hl)',
+                    marginTop: 2
+                  }}
+                >
+                  ✓ 已完成基础流程
+                </div>
+              )}
+            </div>
+          )
+        })()}
 
       {/* Tooltip with L2 */}
       {tooltip && (
@@ -362,21 +468,38 @@ export function TopoCanvas({ spaceId, tree, activeNodeId, onNodeClick }: TopoCan
             border: '1.5px solid var(--color-ink)',
             padding: '10px 14px',
             boxShadow: '2px 2px 8px rgba(34,34,34,0.06)',
-            transform: 'rotate(-0.3deg)',
+            transform: 'rotate(-0.3deg)'
           }}
         >
           <div
             className="font-bold mb-1"
-            style={{ fontFamily: 'var(--font-hand)', fontSize: 18, color: 'var(--color-blue-pen)' }}
+            style={{
+              fontFamily: 'var(--font-hand)',
+              fontSize: 18,
+              color: 'var(--color-blue-pen)'
+            }}
           >
             {tooltip.label}
           </div>
           {tooltip.l2 ? (
-            <div style={{ fontFamily: 'var(--font-hand-alt)', fontSize: 14, color: 'var(--color-ink)', lineHeight: 1.4 }}>
+            <div
+              style={{
+                fontFamily: 'var(--font-hand-alt)',
+                fontSize: 14,
+                color: 'var(--color-ink)',
+                lineHeight: 1.4
+              }}
+            >
               {tooltip.l2}
             </div>
           ) : (
-            <div style={{ fontFamily: 'var(--font-hand-sm)', fontSize: 12, color: 'var(--color-pencil)' }}>
+            <div
+              style={{
+                fontFamily: 'var(--font-hand-sm)',
+                fontSize: 12,
+                color: 'var(--color-pencil)'
+              }}
+            >
               no L2 yet
             </div>
           )}
@@ -386,7 +509,11 @@ export function TopoCanvas({ spaceId, tree, activeNodeId, onNodeClick }: TopoCan
       {/* 风格标签 */}
       <div
         className="absolute bottom-5 right-6 z-10 pointer-events-none"
-        style={{ fontFamily: 'var(--font-hand-sm)', fontSize: 12, color: 'rgba(34,34,34,0.15)' }}
+        style={{
+          fontFamily: 'var(--font-hand-sm)',
+          fontSize: 12,
+          color: 'rgba(34,34,34,0.15)'
+        }}
       >
         MindKit — clean doodle
       </div>

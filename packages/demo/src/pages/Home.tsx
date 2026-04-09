@@ -195,6 +195,26 @@ function timeAgo(dateStr: string): string {
   return `${days} 天前`
 }
 
+// 便签卡片样式变体
+const ROTATIONS = ['-1.2deg', '0.8deg', '-0.6deg', '1.1deg', '-0.4deg', '0.9deg']
+const WOBBLY_RADII = [
+  '15px 25px 20px 10px', '20px 15px 25px 12px', '12px 20px 15px 25px',
+  '25px 12px 18px 15px', '18px 22px 12px 20px', '14px 18px 22px 16px',
+]
+const TAPE_ROTATIONS = ['-2deg', '1.5deg', '-3deg', '2deg', '-1deg', '3deg']
+
+function stickyStyle(idx: number, extra?: React.CSSProperties): React.CSSProperties {
+  return {
+    padding: '24px 28px 32px',
+    background: '#FFF9C4',
+    border: '2.5px solid rgba(45,45,45,0.12)',
+    borderRadius: WOBBLY_RADII[idx % WOBBLY_RADII.length],
+    boxShadow: '4px 4px 0 rgba(45,45,45,0.08)',
+    transform: `rotate(${ROTATIONS[idx % ROTATIONS.length]})`,
+    ...extra,
+  }
+}
+
 const EMOJI_OPTIONS = [
   '💡',
   '🧠',
@@ -727,54 +747,15 @@ export function Home() {
                     loading...
                   </p>
                 )}
-                {spaces.map((space, idx) => {
-                  const rotation = [
-                    '-1.2deg',
-                    '0.8deg',
-                    '-0.6deg',
-                    '1.1deg',
-                    '-0.4deg',
-                    '0.9deg'
-                  ][idx % 6]
-                  const wobbly = [
-                    '15px 25px 20px 10px',
-                    '20px 15px 25px 12px',
-                    '12px 20px 15px 25px',
-                    '25px 12px 18px 15px',
-                    '18px 22px 12px 20px',
-                    '14px 18px 22px 16px'
-                  ][idx % 6]
-                  const tapeRotation = [
-                    '-2deg',
-                    '1.5deg',
-                    '-3deg',
-                    '2deg',
-                    '-1deg',
-                    '3deg'
-                  ][idx % 6]
-                  return (
+                {spaces.map((space, idx) => (
                     <div
                       key={space.id}
                       onClick={() => navigate(`/space/${space.id}`)}
                       onContextMenu={(e) => handleContextMenu(e, space)}
                       className="sticky-note tape-top relative cursor-pointer transition-transform hover:scale-[1.03] group"
-                      style={{
-                        padding: '24px 28px 32px',
-                        background: '#FFF9C4',
-                        border: '2.5px solid #2D2D2D20',
-                        borderRadius: wobbly,
-                        boxShadow: '4px 4px 0 rgba(45,45,45,0.08)',
-                        minHeight: 200,
-                        transform: `rotate(${rotation})`
-                      }}
+                      style={stickyStyle(idx, { minHeight: 200 })}
                     >
-                      {/* 胶带 */}
-                      <span
-                        className="tape"
-                        style={{
-                          transform: `translateX(-50%) rotate(${tapeRotation})`
-                        }}
-                      />
+                      <span className="tape" style={{ transform: `translateX(-50%) rotate(${TAPE_ROTATIONS[idx % TAPE_ROTATIONS.length]})` }} />
                       {/* Emoji + 标题 */}
                       <div className="flex items-center gap-2 mb-2">
                         <span className="text-[24px]">{space.emoji}</span>
@@ -922,7 +903,7 @@ export function Home() {
                       </button>
                     </div>
                   )
-                })}
+                )}
               </div>
             )}
           </div>
@@ -937,40 +918,13 @@ export function Home() {
                 gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))'
               }}
             >
-              {marketKits.map((kit, idx) => {
-                const noteColor = '#FFF9C4'
-                const rotation = ['0.7deg', '-0.9deg', '0.5deg', '-0.7deg'][
-                  idx % 4
-                ]
-                const wobbly = [
-                  '20px 15px 25px 12px',
-                  '15px 22px 12px 20px',
-                  '25px 12px 18px 15px',
-                  '12px 20px 15px 25px'
-                ][idx % 4]
-                const tapeRotation = ['1.5deg', '-2.5deg', '2deg', '-1.5deg'][
-                  idx % 4
-                ]
-                return (
+              {marketKits.map((kit, idx) => (
                   <div
                     key={kit.id}
                     className="sticky-note tape-top relative flex flex-col overflow-hidden transition-transform hover:scale-[1.03]"
-                    style={{
-                      padding: '24px 28px 32px',
-                      background: noteColor,
-                      border: '2.5px solid #2D2D2D20',
-                      borderRadius: wobbly,
-                      boxShadow: '4px 4px 0 rgba(45,45,45,0.08)',
-                      minHeight: 200,
-                      transform: `rotate(${rotation})`
-                    }}
+                    style={stickyStyle(idx, { minHeight: 200 })}
                   >
-                    <span
-                      className="tape"
-                      style={{
-                        transform: `translateX(-50%) rotate(${tapeRotation})`
-                      }}
-                    />
+                    <span className="tape" style={{ transform: `translateX(-50%) rotate(${TAPE_ROTATIONS[idx % TAPE_ROTATIONS.length]})` }} />
                     <div className="flex items-start justify-between gap-3 mb-2">
                       <h3
                         className="text-[20px] font-semibold"
@@ -1047,7 +1001,7 @@ export function Home() {
                     </div>
                   </div>
                 )
-              })}
+              )}
             </div>
           </div>
         )}
@@ -1085,28 +1039,11 @@ export function Home() {
               </p>
             ) : (
               <div className="flex flex-col gap-5 ">
-                {published.map((kit, idx) => {
-                  const rotation = ['0.5deg', '-0.7deg', '0.4deg', '-0.5deg'][
-                    idx % 4
-                  ]
-                  const wobbly = [
-                    '20px 15px 25px 12px',
-                    '15px 22px 12px 20px',
-                    '25px 12px 18px 15px',
-                    '12px 20px 15px 25px'
-                  ][idx % 4]
-                  return (
+                {published.map((kit, idx) => (
                     <div
                       key={kit.id}
                       className="sticky-note tape-top relative flex items-center gap-6 cursor-pointer transition-transform hover:scale-[1.02]"
-                      style={{
-                        padding: '24px 28px',
-                        background: '#FFF9C4',
-                        border: '2.5px solid rgba(45,45,45,0.12)',
-                        borderRadius: wobbly,
-                        boxShadow: '4px 4px 0 rgba(45,45,45,0.08)',
-                        transform: `rotate(${rotation})`
-                      }}
+                      style={stickyStyle(idx, { padding: '24px 28px' })}
                     >
                       <div className="tape" />
                       <div className="flex-1 min-w-0">
@@ -1167,7 +1104,7 @@ export function Home() {
                       </div>
                     </div>
                   )
-                })}
+                )}
               </div>
             )}
           </div>

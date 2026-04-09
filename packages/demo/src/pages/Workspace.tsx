@@ -1,6 +1,11 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, MessageSquare, PanelLeftClose, Settings } from 'lucide-react'
+import {
+  ArrowLeft,
+  MessageSquare,
+  PanelLeftClose,
+  Settings
+} from 'lucide-react'
 import { ChatPanel } from '../components/ChatPanel'
 import { TopoCanvas } from '../components/TopoCanvas'
 import { ScribbleBall } from '../components/ScribbleBall'
@@ -8,8 +13,16 @@ import { ProductView } from '../components/ProductView'
 import { EventStream } from '../components/EventStream'
 import { SettingsPanel } from '../components/SettingsPanel'
 import {
-  sendTurn, getSessionTree, getSessionMessages, getSessionL2, getInsights, listSpaces,
-  type SessionTreeNode, type TurnRecord, type Insight, type Space
+  sendTurn,
+  getSessionTree,
+  getSessionMessages,
+  getSessionL2,
+  getInsights,
+  listSpaces,
+  type SessionTreeNode,
+  type TurnRecord,
+  type Insight,
+  type Space
 } from '../lib/api'
 
 type Phase = 'idle' | 'animating' | 'active'
@@ -42,21 +55,26 @@ export function Workspace() {
   // 加载 space 信息
   useEffect(() => {
     if (!spaceId) return
-    listSpaces().then(({ spaces }) => {
-      const found = spaces.find(s => s.id === spaceId)
-      if (found) setSpace(found)
-    }).catch(() => {})
+    listSpaces()
+      .then(({ spaces }) => {
+        const found = spaces.find((s) => s.id === spaceId)
+        if (found) setSpace(found)
+      })
+      .catch(() => {})
   }, [spaceId])
 
   // 从 tree 中找节点 label
-  const findLabel = useCallback((id: string, nodes: SessionTreeNode[]): string => {
-    for (const n of nodes) {
-      if (n.id === id) return n.label
-      const found = findLabel(id, n.children)
-      if (found) return found
-    }
-    return ''
-  }, [])
+  const findLabel = useCallback(
+    (id: string, nodes: SessionTreeNode[]): string => {
+      for (const n of nodes) {
+        if (n.id === id) return n.label
+        const found = findLabel(id, n.children)
+        if (found) return found
+      }
+      return ''
+    },
+    []
+  )
 
   const activeLabel = activeSessionId ? findLabel(activeSessionId, tree) : ''
 
@@ -69,15 +87,21 @@ export function Workspace() {
       if (!activeSessionId && data.tree?.length > 0) {
         setActiveSessionId(data.tree[0].id)
       }
-    } catch { /* 首次可能为空 */ }
+    } catch {
+      /* 首次可能为空 */
+    }
   }, [spaceId, activeSessionId])
 
-  useEffect(() => { refreshTree() }, [refreshTree])
+  useEffect(() => {
+    refreshTree()
+  }, [refreshTree])
 
   // 加载全局洞察
   useEffect(() => {
     if (!spaceId) return
-    getInsights(spaceId).then(({ insights }) => setInsights(insights)).catch(() => {})
+    getInsights(spaceId)
+      .then(({ insights }) => setInsights(insights))
+      .catch(() => {})
   }, [spaceId])
 
   // 切换节点时加载该节点的 L3 消息和 L2 摘要
@@ -87,16 +111,20 @@ export function Workspace() {
     if (messagesMap.current.has(activeSessionId)) {
       setCurrentMessages([...messagesMap.current.get(activeSessionId)!])
     } else {
-      getSessionMessages(spaceId, activeSessionId).then(({ records }) => {
-        messagesMap.current.set(activeSessionId, records)
-        setCurrentMessages(records)
-      }).catch(() => {
-        messagesMap.current.set(activeSessionId, [])
-        setCurrentMessages([])
-      })
+      getSessionMessages(spaceId, activeSessionId)
+        .then(({ records }) => {
+          messagesMap.current.set(activeSessionId, records)
+          setCurrentMessages(records)
+        })
+        .catch(() => {
+          messagesMap.current.set(activeSessionId, [])
+          setCurrentMessages([])
+        })
     }
     // L2 摘要
-    getSessionL2(spaceId, activeSessionId).then(({ content }) => setCurrentL2(content)).catch(() => setCurrentL2(null))
+    getSessionL2(spaceId, activeSessionId)
+      .then(({ content }) => setCurrentL2(content))
+      .catch(() => setCurrentL2(null))
   }, [spaceId, activeSessionId])
 
   // 切换活跃节点
@@ -122,7 +150,11 @@ export function Workspace() {
     if (!spaceId || !activeSessionId || sending) return
     setSending(true)
 
-    const userMsg: TurnRecord = { role: 'user', content: input, timestamp: new Date().toISOString() }
+    const userMsg: TurnRecord = {
+      role: 'user',
+      content: input,
+      timestamp: new Date().toISOString()
+    }
     const current = messagesMap.current.get(activeSessionId) || []
     current.push(userMsg)
     messagesMap.current.set(activeSessionId, current)
@@ -130,13 +162,21 @@ export function Workspace() {
 
     try {
       const result = await sendTurn(spaceId, activeSessionId, input)
-      const aiMsg: TurnRecord = { role: 'assistant', content: result.response, timestamp: new Date().toISOString() }
+      const aiMsg: TurnRecord = {
+        role: 'assistant',
+        content: result.response,
+        timestamp: new Date().toISOString()
+      }
       current.push(aiMsg)
       messagesMap.current.set(activeSessionId, current)
       setCurrentMessages([...current])
       refreshTree()
     } catch {
-      const errMsg: TurnRecord = { role: 'assistant', content: '(连接失败，请重试)', timestamp: new Date().toISOString() }
+      const errMsg: TurnRecord = {
+        role: 'assistant',
+        content: '(连接失败，请重试)',
+        timestamp: new Date().toISOString()
+      }
       current.push(errMsg)
       messagesMap.current.set(activeSessionId, current)
       setCurrentMessages([...current])
@@ -151,17 +191,22 @@ export function Workspace() {
   const viewTabs: { key: ViewTab; label: string }[] = [
     { key: 'nodes', label: '节点视图' },
     { key: 'products', label: '产物视图' },
-    { key: 'events', label: '事件流' },
+    { key: 'events', label: '事件流' }
   ]
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden" style={{ background: 'var(--color-paper)' }}>
-
+    <div
+      className="relative h-screen w-screen overflow-hidden"
+      style={{ background: 'var(--color-paper)' }}
+    >
       {/* ─── 顶栏 ─── */}
       {phase === 'active' && (
         <div
-          className="absolute top-0 left-0 right-0 z-50 flex items-center gap-4 pl-4 pr-6 h-12"
-          style={{ background: 'var(--color-paper)', borderBottom: '1px solid rgba(42,42,42,0.06)' }}
+          className="absolute top-0 left-0 right-0 z-50 flex items-center gap-4 pl-8 pr-8 h-12"
+          style={{
+            background: 'var(--color-paper)',
+            borderBottom: '1px solid rgba(42,42,42,0.06)'
+          }}
         >
           {/* 返回 */}
           <button
@@ -175,16 +220,26 @@ export function Workspace() {
           {/* Kit 名称 */}
           <div className="flex items-center gap-2">
             {space && <span className="text-[18px]">{space.emoji}</span>}
-            <span className="text-[20px] font-semibold" style={{ ...handFont, color: 'var(--color-ink)' }}>
+            <span
+              className="text-[20px] font-semibold"
+              style={{ ...handFont, color: 'var(--color-ink)' }}
+            >
               {space?.label || 'Kit'}
             </span>
             {space && (
               <span
                 className="px-2 py-0.5 rounded-full"
                 style={{
-                  ...handSm, fontSize: 11,
-                  background: space.mode === 'AUTO' ? 'rgba(58,107,197,0.1)' : 'rgba(201,74,74,0.1)',
-                  color: space.mode === 'AUTO' ? 'var(--color-blue-pen)' : 'var(--color-red-pen)',
+                  ...handSm,
+                  fontSize: 11,
+                  background:
+                    space.mode === 'AUTO'
+                      ? 'rgba(58,107,197,0.1)'
+                      : 'rgba(201,74,74,0.1)',
+                  color:
+                    space.mode === 'AUTO'
+                      ? 'var(--color-blue-pen)'
+                      : 'var(--color-red-pen)'
                 }}
               >
                 {space.mode}
@@ -194,8 +249,17 @@ export function Workspace() {
 
           {/* 当前节点 + 对话/沉淀 tab */}
           {drawerOpen && activeLabel && (
-            <div className="flex items-center gap-3" style={{ borderLeft: '1px solid rgba(42,42,42,0.1)', paddingLeft: 16 }}>
-              <span className="text-[16px] font-semibold" style={{ ...handFont, color: 'var(--color-blue-pen)' }}>
+            <div
+              className="flex items-center gap-3"
+              style={{
+                borderLeft: '1px solid rgba(42,42,42,0.1)',
+                paddingLeft: 16
+              }}
+            >
+              <span
+                className="text-[20px] font-semibold"
+                style={{ ...handFont, color: 'var(--color-blue-pen)' }}
+              >
                 {activeLabel}
               </span>
               {[
@@ -205,12 +269,20 @@ export function Workspace() {
                 <button
                   key={t.key}
                   onClick={() => setPanelTab(t.key)}
-                  className="px-2 py-0.5 rounded-md bg-transparent border-none cursor-pointer transition-colors"
+                  className="rounded-md bg-transparent border-none cursor-pointer transition-colors"
                   style={{
-                    ...handSm, fontSize: 13,
-                    color: panelTab === t.key ? 'var(--color-blue-pen)' : 'var(--color-pencil)',
-                    background: panelTab === t.key ? 'rgba(58,107,197,0.08)' : 'transparent',
-                    fontWeight: panelTab === t.key ? 600 : 400,
+                    ...handFont,
+                    fontSize: 16,
+                    padding: '4px 12px',
+                    color:
+                      panelTab === t.key
+                        ? 'var(--color-blue-pen)'
+                        : 'var(--color-pencil)',
+                    background:
+                      panelTab === t.key
+                        ? 'rgba(58,107,197,0.08)'
+                        : 'transparent',
+                    fontWeight: panelTab === t.key ? 600 : 400
                   }}
                 >
                   {t.label}
@@ -223,17 +295,27 @@ export function Workspace() {
           <div className="flex-1" />
 
           {/* 视图切换 + 设置（右侧贴边） */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {viewTabs.map((t) => (
               <button
                 key={t.key}
                 onClick={() => setViewTab(t.key)}
-                className="px-3 py-1 rounded-md bg-transparent border-none cursor-pointer transition-colors"
+                className="rounded-md bg-transparent border-none cursor-pointer transition-colors"
                 style={{
-                  ...handSm, fontSize: 14,
-                  color: viewTab === t.key ? 'var(--color-blue-pen)' : 'var(--color-pencil)',
-                  background: viewTab === t.key ? 'rgba(58,107,197,0.08)' : 'transparent',
+                  ...handFont,
+                  fontSize: 17,
+                  padding: '6px 14px',
+                  color:
+                    viewTab === t.key
+                      ? 'var(--color-blue-pen)'
+                      : 'var(--color-pencil)',
+                  background:
+                    viewTab === t.key ? 'rgba(58,107,197,0.1)' : 'transparent',
                   fontWeight: viewTab === t.key ? 600 : 400,
+                  borderBottom:
+                    viewTab === t.key
+                      ? '2px solid var(--color-blue-pen)'
+                      : '2px solid transparent'
                 }}
               >
                 {t.label}
@@ -266,7 +348,7 @@ export function Workspace() {
             borderLeft: 'none',
             borderRadius: '0 10px 10px 0',
             color: 'var(--color-pencil)',
-            boxShadow: '2px 0 6px rgba(0,0,0,0.04)',
+            boxShadow: '2px 0 6px rgba(0,0,0,0.04)'
           }}
           title="打开对话"
         >
@@ -279,12 +361,29 @@ export function Workspace() {
         <button
           onClick={handleBallClick}
           className="fixed z-50 cursor-pointer bg-transparent border-none"
-          style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)', transition: 'transform 0.15s' }}
-          onMouseEnter={(e) => e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1.08)'}
-          onMouseLeave={(e) => e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1)'}
+          style={{
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            transition: 'transform 0.15s'
+          }}
+          onMouseEnter={(e) =>
+            (e.currentTarget.style.transform =
+              'translate(-50%, -50%) scale(1.08)')
+          }
+          onMouseLeave={(e) =>
+            (e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1)')
+          }
         >
           <ScribbleBall size={80} color="#3a6bc5" />
-          <p className="mt-2 text-center" style={{ fontFamily: 'var(--font-hand-sm)', fontSize: 14, color: 'var(--color-pencil)' }}>
+          <p
+            className="mt-2 text-center"
+            style={{
+              fontFamily: 'var(--font-hand-sm)',
+              fontSize: 14,
+              color: 'var(--color-pencil)'
+            }}
+          >
             tap to start
           </p>
         </button>
@@ -293,10 +392,23 @@ export function Workspace() {
       {/* 动画态 */}
       {phase === 'animating' && (
         <>
-          <div className="absolute top-0 left-0 bottom-0 z-40" style={{ width: '40%', animation: 'panelSlideIn 0.6s ease-out forwards' }}>
-            <ChatPanel messages={currentMessages} onSend={handleSend} sending={sending} nodeLabel={activeLabel} />
+          <div
+            className="absolute top-0 left-0 bottom-0 z-40"
+            style={{
+              width: '40%',
+              animation: 'panelSlideIn 0.6s ease-out forwards'
+            }}
+          >
+            <ChatPanel
+              messages={currentMessages}
+              onSend={handleSend}
+              sending={sending}
+            />
           </div>
-          <div className="fixed z-50 pointer-events-none" style={{ animation: 'ballToTopo 0.7s ease-in-out forwards' }}>
+          <div
+            className="fixed z-50 pointer-events-none"
+            style={{ animation: 'ballToTopo 0.7s ease-in-out forwards' }}
+          >
             <ScribbleBall size={80} color="#3a6bc5" />
           </div>
         </>
@@ -310,7 +422,7 @@ export function Workspace() {
             className="shrink-0 h-full relative overflow-hidden"
             style={{
               width: drawerOpen ? '40%' : 0,
-              transition: 'width 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
+              transition: 'width 0.35s cubic-bezier(0.4, 0, 0.2, 1)'
             }}
           >
             <div className="h-full" style={{ width: '40vw', minWidth: '40vw' }}>
@@ -318,7 +430,6 @@ export function Workspace() {
                 messages={currentMessages}
                 onSend={handleSend}
                 sending={sending}
-                nodeLabel={activeLabel}
                 activeTab={panelTab}
                 l2Summary={currentL2}
                 insights={insights}
@@ -348,9 +459,7 @@ export function Workspace() {
                 onNodeClick={handleNodeClick}
               />
             )}
-            {viewTab === 'products' && (
-              <ProductView spaceId={spaceId!} />
-            )}
+            {viewTab === 'products' && <ProductView spaceId={spaceId!} />}
             {viewTab === 'events' && (
               <EventStream spaceId={spaceId!} onNodeClick={handleNodeClick} />
             )}

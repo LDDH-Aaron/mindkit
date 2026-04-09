@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
 @theme {
-  --font-hand: "Caveat", cursive;
-  --font-hand-alt: "Patrick Hand", cursive;
-  --font-hand-sm: "Coming Soon", cursive;
+  --font-hand: "Caveat", "FangSong", "仿宋", STFangsong, cursive;
+  --font-hand-alt: "Patrick Hand", "FangSong", "仿宋", STFangsong, cursive;
+  --font-hand-sm: "Coming Soon", "FangSong", "仿宋", STFangsong, cursive;
 
   --color-paper: #f7f4ee;
   --color-ink: #222222;
@@ -17,7 +17,6 @@
   --color-margin-line: rgba(200, 80, 80, 0.15);
 }
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
   background: var(--color-paper);

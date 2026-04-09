@@ -7,7 +7,6 @@ interface ChatPanelProps {
   messages: TurnRecord[]
   onSend: (input: string) => void
   sending: boolean
-  nodeLabel?: string
   /** 受控的当前 tab */
   activeTab?: PanelTab
   /** L2 摘要 */
@@ -120,7 +119,7 @@ export function ChatPanel({
                       fontFamily: isUser
                         ? 'var(--font-hand)'
                         : 'var(--font-hand-alt)',
-                      fontSize: isUser ? 18 : 17,
+                      fontSize: isUser ? 15 : 14,
                       color: isUser
                         ? 'var(--color-blue-pen)'
                         : 'var(--color-ink)',
@@ -141,7 +140,7 @@ export function ChatPanel({
                     background: 'rgba(42,42,42,0.06)',
                     border: '1.5px solid rgba(42,42,42,0.08)',
                     ...handAlt,
-                    fontSize: 17,
+                    fontSize: 14,
                     color: 'var(--color-pencil)'
                   }}
                 >
@@ -166,7 +165,7 @@ export function ChatPanel({
                 borderBottom: '1.5px solid var(--color-pencil)',
                 padding: '6px 2px',
                 ...handFont,
-                fontSize: 20,
+                fontSize: 16,
                 color: 'var(--color-blue-pen)'
               }}
             />

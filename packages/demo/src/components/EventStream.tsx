@@ -71,7 +71,7 @@ export function EventStream({ spaceId, onNodeClick }: EventStreamProps) {
             className="px-3 py-1 rounded-full cursor-pointer border transition-colors"
             style={{
               ...handSm,
-              fontSize: 12,
+              fontSize: 14,
               borderColor: filter === t ? 'var(--color-blue-pen)' : 'rgba(42,42,42,0.1)',
               background: filter === t ? 'rgba(58,107,197,0.08)' : 'transparent',
               color: filter === t ? 'var(--color-blue-pen)' : 'var(--color-pencil)',
@@ -117,7 +117,7 @@ export function EventStream({ spaceId, onNodeClick }: EventStreamProps) {
                         className="px-2 py-0.5 rounded-full"
                         style={{
                           ...handSm,
-                          fontSize: 11,
+                          fontSize: 13,
                           background: `${meta.color}15`,
                           color: meta.color,
                           border: `1px solid ${meta.color}25`,
@@ -125,11 +125,11 @@ export function EventStream({ spaceId, onNodeClick }: EventStreamProps) {
                       >
                         {EVENT_TYPE_LABELS[evt.type]}
                       </span>
-                      <span style={{ ...handSm, fontSize: 12, color: 'var(--color-pencil)' }}>
+                      <span style={{ ...handSm, fontSize: 14, color: 'var(--color-pencil)' }}>
                         {new Date(evt.timestamp).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
-                    <p style={{ ...handAlt, fontSize: 15, color: 'var(--color-ink)', lineHeight: 1.5 }}>
+                    <p style={{ ...handAlt, fontSize: 17, color: 'var(--color-ink)', lineHeight: 1.5 }}>
                       {evt.description}
                     </p>
                     {/* 可点击跳转 */}
@@ -137,7 +137,7 @@ export function EventStream({ spaceId, onNodeClick }: EventStreamProps) {
                       <button
                         onClick={() => onNodeClick(evt.nodeId!)}
                         className="mt-1 bg-transparent border-none cursor-pointer underline"
-                        style={{ ...handSm, fontSize: 12, color: 'var(--color-blue-pen)' }}
+                        style={{ ...handSm, fontSize: 14, color: 'var(--color-blue-pen)' }}
                       >
                         跳转到节点 →
                       </button>
