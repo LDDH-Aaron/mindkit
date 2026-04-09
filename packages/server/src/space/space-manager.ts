@@ -231,6 +231,9 @@ export class SpaceManager {
       env: this.env,
       spaceMeta: meta,
       eventBus: this.getEventBus(id),
+      onPresetActivated: (profileName, sessionId) => {
+        this.recordPresetActivation(id, profileName, sessionId).catch(() => {})
+      },
     })
     this.agents.set(id, agent)
     return agent

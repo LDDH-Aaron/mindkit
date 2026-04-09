@@ -4,7 +4,6 @@ import {
   SessionTreeImpl,
   FileSystemMemoryEngine,
   SkillRouterImpl,
-  ForkProfileRegistryImpl,
   ToolRegistryImpl,
   Scheduler,
   createDefaultConsolidateFn,
@@ -16,6 +15,7 @@ import {
   loadMainSession,
   buildSessionToolList,
 } from '@stello-ai/core'
+import { TrackingProfileRegistry } from './tracking-profile-registry'
 import type {
   StelloAgentConfig,
   EngineLifecycleAdapter,
@@ -42,6 +42,8 @@ export interface SpaceFactoryContext {
   spaceMeta?: SpaceMeta
   /** Space 级事件总线（可选） */
   eventBus?: EventBus
+  /** preset 被激活时的回调（由 SpaceManager 提供） */
+  onPresetActivated?: (profileName: string, sessionId: string) => void
 }
 
 /** 从 MemoryEngine 恢复 session 运行态到 InMemoryStorageAdapter */
@@ -123,7 +125,7 @@ export function createSpaceAgent(ctx: SpaceFactoryContext): StelloAgent {
   }
 
   // Fork profiles: preset first, then space-level override
-  const profiles = new ForkProfileRegistryImpl()
+  const profiles = new TrackingProfileRegistry()
   for (const fp of ctx.config.forkProfiles) {
     profiles.register(fp.name, {
       systemPrompt: fp.systemPrompt,
@@ -144,6 +146,12 @@ export function createSpaceAgent(ctx: SpaceFactoryContext): StelloAgent {
       })
     }
   }
+
+  // 收集所有 preset profile 名称
+  const presetNames = new Set([
+    ...ctx.config.forkProfiles.map((fp) => fp.name),
+    ...(ctx.spaceMeta?.presetSessions?.map((p) => p.name) ?? []),
+  ])
 
   // 空 ToolRegistry（内置 tool 由 Engine 管理）
   const toolRegistry = new ToolRegistryImpl()
@@ -299,12 +307,23 @@ export function createSpaceAgent(ctx: SpaceFactoryContext): StelloAgent {
           lifecycle.afterTurn(sessionId, userRecord, assistantRecord).catch(() => {})
         },
         onSessionFork({ parentId, child }) {
+          // 检测是否使用了预设 profile
+          const profileName = profiles.consumeLastResolved()
+          if (profileName && presetNames.has(profileName) && ctx.onPresetActivated) {
+            ctx.onPresetActivated(profileName, child.id)
+          }
+
           if (ctx.eventBus) {
             ctx.eventBus.emit({
               id: crypto.randomUUID(),
               at: new Date().toISOString(),
               kind: 'node_forked',
-              payload: { nodeId: child.id, label: child.label, parentId },
+              payload: {
+                nodeId: child.id,
+                label: child.label,
+                parentId,
+                ...(profileName && presetNames.has(profileName) ? { activatedPreset: profileName } : {}),
+              },
             })
           }
         },
