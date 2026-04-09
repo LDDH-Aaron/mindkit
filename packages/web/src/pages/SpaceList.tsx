@@ -5,6 +5,31 @@ import { cn } from '@/lib/utils'
 import { fetchSpaces, fetchPresets, createSpace, deleteSpace } from '@/lib/api'
 import type { SpaceMeta, PresetConfig } from '@/lib/types'
 
+/* ─── 便签卡片样式变体 ─── */
+const ROTATIONS = ['-1.2deg', '0.8deg', '-0.6deg', '1.1deg', '-0.4deg', '0.9deg']
+const WOBBLY_RADII = [
+  '15px 25px 20px 10px',
+  '20px 15px 25px 12px',
+  '12px 20px 15px 25px',
+  '25px 12px 18px 15px',
+  '18px 22px 12px 20px',
+  '14px 18px 22px 16px',
+]
+const TAPE_ROTATIONS = ['-2deg', '1.5deg', '-3deg', '2deg', '-1deg', '3deg']
+
+/** 生成便签卡片内联样式 */
+function stickyStyle(idx: number, extra?: React.CSSProperties): React.CSSProperties {
+  return {
+    padding: '24px 28px 32px',
+    background: '#FFF9C4',
+    border: '2.5px solid rgba(45,45,45,0.12)',
+    borderRadius: WOBBLY_RADII[idx % WOBBLY_RADII.length],
+    boxShadow: '4px 4px 0 rgba(45,45,45,0.08)',
+    transform: `rotate(${ROTATIONS[idx % ROTATIONS.length]})`,
+    ...extra,
+  }
+}
+
 /* ─── Emoji 选择器 ─── */
 
 const EMOJI_OPTIONS = ['🧠', '🚀', '💡', '🎯', '📚', '🔬', '🎨', '🏗️', '📝', '🌟', '⚡', '🔥', '🎮', '🎵', '🌍', '💼']
@@ -234,17 +259,19 @@ function SkillEditor({ skills, onChange }: { skills: SkillDraft[]; onChange: (s:
 
 function MarketModal({
   presets,
+  initialSelected,
   onClose,
   onCreated,
 }: {
   presets: PresetConfig[]
+  initialSelected?: PresetConfig
   onClose: () => void
   onCreated: (meta: SpaceMeta) => void
 }) {
-  const [selected, setSelected] = useState<PresetConfig | null>(null)
+  const [selected, setSelected] = useState<PresetConfig | null>(initialSelected ?? null)
   const [name, setName] = useState('')
-  const [emoji, setEmoji] = useState('🧠')
-  const [color, setColor] = useState('#6366f1')
+  const [emoji, setEmoji] = useState(initialSelected?.emoji ?? '🧠')
+  const [color, setColor] = useState(initialSelected?.color ?? '#3a6bc5')
   const [showDetail, setShowDetail] = useState(false)
   const [detailTab, setDetailTab] = useState<'prompt' | 'sessions' | 'skills' | 'memory'>('prompt')
   const [error, setError] = useState('')
@@ -279,79 +306,38 @@ function MarketModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={onClose}>
       <div
-        className="bg-card rounded-xl shadow-2xl w-[640px] max-h-[85vh] flex flex-col"
+        className="rounded-sm shadow-2xl w-[640px] max-h-[85vh] flex flex-col"
+        style={{ background: 'var(--color-paper)', transform: 'rotate(-0.5deg)' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-6 pt-6 pb-4 border-b border-border">
+        <div className="px-6 pt-6 pb-4" style={{ borderBottom: '1.5px solid var(--color-grid-line)' }}>
           <div className="flex items-center gap-2 mb-1">
-            <Store size={18} className="text-primary" />
-            <h2 className="text-lg font-semibold">Kit Market</h2>
+            <Store size={18} style={{ color: 'var(--color-blue-pen)' }} />
+            <h2 style={{ fontFamily: 'var(--font-hand)', fontSize: 22, fontWeight: 600, color: 'var(--color-ink)' }}>使用模板创建</h2>
           </div>
-          <p className="text-xs text-text-muted">选择一个预置模板，快速创建认知空间</p>
+          <p style={{ fontFamily: 'var(--font-hand-sm)', fontSize: 12, color: 'var(--color-pencil)' }}>配置名称和颜色，一键创建认知空间</p>
         </div>
 
         <div className="flex-1 overflow-y-auto p-6">
-          {/* Preset 网格 */}
-          {!selected ? (
-            <div className="grid grid-cols-2 gap-3">
-              {presets.map((p) => (
-                <button
-                  key={p.dirName}
-                  onClick={() => selectPreset(p)}
-                  className="flex flex-col items-start gap-2 p-4 rounded-xl border border-border bg-surface hover:border-primary/40 hover:shadow-md transition-all text-left group"
-                >
-                  <div className="flex items-center gap-2 w-full">
-                    <span className="text-2xl">{p.emoji}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold truncate group-hover:text-primary transition-colors">{p.name}</div>
-                    </div>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0"
-                      style={{ backgroundColor: p.color + '20', color: p.color }}
-                    >
-                      {p.mode}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-text-muted line-clamp-2">{p.description}</p>
-                  <div className="flex gap-2 mt-1">
-                    {p.forkProfiles.length > 0 && (
-                      <span className="text-[10px] bg-muted text-text-muted px-1.5 py-0.5 rounded">
-                        {p.forkProfiles.length} 预设节点
-                      </span>
-                    )}
-                    {p.skills.length > 0 && (
-                      <span className="text-[10px] bg-muted text-text-muted px-1.5 py-0.5 rounded">
-                        {p.skills.length} 技能
-                      </span>
-                    )}
-                  </div>
-                </button>
-              ))}
-            </div>
-          ) : (
-            /* 已选 preset — 配置预览 + 命名 */
+          {selected && (
             <div className="space-y-5">
-              {/* 返回按钮 */}
-              <button
-                onClick={() => setSelected(null)}
-                className="flex items-center gap-1 text-xs text-text-muted hover:text-primary transition-colors"
-              >
-                <ArrowLeft size={14} /> 返回列表
-              </button>
 
               {/* Preset 信息卡 */}
-              <div className="bg-surface rounded-xl border border-border p-4">
+              <div className="rounded-lg p-4" style={{ background: 'rgba(42,42,42,0.04)', border: '1.5px solid rgba(42,42,42,0.08)' }}>
                 <div className="flex items-center gap-3 mb-3">
                   <span className="text-3xl">{selected.emoji}</span>
                   <div>
-                    <h3 className="text-base font-semibold">{selected.name}</h3>
-                    <p className="text-xs text-text-muted">{selected.description}</p>
+                    <h3 style={{ fontFamily: 'var(--font-hand)', fontSize: 20, fontWeight: 600, color: 'var(--color-blue-pen)' }}>{selected.name}</h3>
+                    <p style={{ fontFamily: 'var(--font-hand-alt)', fontSize: 14, color: 'var(--color-pencil)' }}>{selected.description}</p>
                   </div>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full font-medium ml-auto shrink-0"
-                    style={{ backgroundColor: selected.color + '20', color: selected.color }}
-                  >
+                  <span className="px-2 py-0.5 rounded-full ml-auto shrink-0" style={{
+                    fontFamily: 'var(--font-hand-sm)', fontSize: 11,
+                    background: selected.mode === 'AUTO' ? 'rgba(58,107,197,0.1)' : 'rgba(201,74,74,0.1)',
+                    color: selected.mode === 'AUTO' ? 'var(--color-blue-pen)' : 'var(--color-red-pen)',
+                  }}>
                     {selected.mode}
                   </span>
                 </div>
@@ -359,10 +345,11 @@ function MarketModal({
                 {/* 只读预览 toggle */}
                 <button
                   onClick={() => setShowDetail(!showDetail)}
-                  className="flex items-center gap-1 text-[11px] text-text-muted hover:text-primary transition-colors"
+                  className="flex items-center gap-1 bg-transparent border-none cursor-pointer transition-colors hover:opacity-70"
+                  style={{ fontFamily: 'var(--font-hand-sm)', fontSize: 12, color: 'var(--color-pencil)' }}
                 >
                   <Eye size={12} />
-                  {showDetail ? '收起配置详情' : '查看配置详情'}
+                  {showDetail ? 'hide details' : 'view details'}
                   {showDetail ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                 </button>
 
@@ -500,38 +487,39 @@ function MarketModal({
                 <div className="flex gap-3 items-start">
                   <EmojiPicker value={emoji} onChange={setEmoji} />
                   <div className="flex-1">
-                    <label className="block text-[11px] font-medium text-text-muted mb-1">空间名称 *</label>
+                    <label className="block mb-0.5" style={{ fontFamily: 'var(--font-hand-sm)', fontSize: 12, color: 'var(--color-pencil)' }}>空间名称 *</label>
                     <input
                       type="text" value={name} onChange={(e) => setName(e.target.value)}
-                      placeholder="给你的空间起个名字"
-                      className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-sm placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                      placeholder="给空间起个名字"
+                      className="w-full border-none outline-none bg-transparent"
+                      style={{ borderBottom: '1.5px solid var(--color-pencil)', padding: '4px 2px', fontFamily: 'var(--font-hand)', fontSize: 17, color: 'var(--color-blue-pen)' }}
                       autoFocus
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-medium text-text-muted mb-1.5">空间颜色</label>
+                  <label className="block mb-1.5" style={{ fontFamily: 'var(--font-hand-sm)', fontSize: 12, color: 'var(--color-pencil)' }}>空间颜色</label>
                   <ColorPicker value={color} onChange={setColor} />
                 </div>
               </div>
 
-              {error && <p className="text-sm text-error bg-error/10 rounded-lg px-3 py-2">{error}</p>}
+              {error && <p className="rounded-lg px-3 py-2" style={{ fontFamily: 'var(--font-hand-alt)', fontSize: 14, color: 'var(--color-red-pen)', background: 'rgba(201,74,74,0.08)' }}>{error}</p>}
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-border flex justify-end gap-2">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm text-text-secondary hover:bg-muted transition-colors">取消</button>
+        <div className="px-6 py-4 flex justify-end gap-2" style={{ borderTop: '1px dashed rgba(42,42,42,0.12)' }}>
+          <button onClick={onClose} className="px-4 py-2 rounded-lg bg-transparent border-none cursor-pointer transition-colors hover:opacity-70" style={{ fontFamily: 'var(--font-hand)', fontSize: 15, color: 'var(--color-pencil)' }}>cancel</button>
           {selected && (
             <button
               onClick={handleCreate}
               disabled={!name.trim() || loading}
-              className="px-5 py-2 rounded-lg text-sm font-medium text-white transition-colors disabled:opacity-40"
-              style={{ backgroundColor: color }}
+              className="px-5 py-2 rounded-md border-none cursor-pointer transition-transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40"
+              style={{ fontFamily: 'var(--font-hand)', fontSize: 16, backgroundColor: color, color: '#fff' }}
             >
-              {loading ? '创建中...' : '使用此模板创建'}
+              {loading ? 'creating...' : 'create from template'}
             </button>
           )}
         </div>
@@ -617,19 +605,20 @@ function CustomCreateModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={onClose}>
       <div
         className={cn(
-          'bg-card rounded-xl shadow-2xl flex max-h-[85vh] transition-all duration-300',
+          'rounded-sm shadow-2xl flex max-h-[85vh] transition-all duration-300',
           showAdvanced ? 'w-[900px]' : 'w-[480px]',
         )}
+        style={{ background: 'var(--color-paper)', transform: 'rotate(0.3deg)' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* 左栏：基础配置 */}
         <div className="flex-1 p-6 overflow-y-auto">
           <div className="flex items-center gap-2 mb-5">
-            <Wrench size={18} className="text-primary" />
-            <h2 className="text-lg font-semibold">自定义创建</h2>
+            <Wrench size={18} style={{ color: 'var(--color-blue-pen)' }} />
+            <h2 style={{ fontFamily: 'var(--font-hand)', fontSize: 22, fontWeight: 600, color: 'var(--color-ink)' }}>Custom Create</h2>
           </div>
 
           <div className="space-y-4">
@@ -637,11 +626,12 @@ function CustomCreateModal({
             <div className="flex gap-3 items-start">
               <EmojiPicker value={emoji} onChange={setEmoji} />
               <div className="flex-1">
-                <label className="block text-[11px] font-medium text-text-muted mb-1">空间名称 *</label>
+                <label className="block mb-0.5" style={{ fontFamily: 'var(--font-hand-sm)', fontSize: 12, color: 'var(--color-pencil)' }}>空间名称 *</label>
                 <input
                   type="text" value={name} onChange={(e) => setName(e.target.value)}
-                  placeholder="如：黑客松项目规划"
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-sm placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                  placeholder="给空间起个名字"
+                  className="w-full border-none outline-none bg-transparent"
+                  style={{ borderBottom: '1.5px solid var(--color-pencil)', padding: '4px 2px', fontFamily: 'var(--font-hand)', fontSize: 17, color: 'var(--color-blue-pen)' }}
                   autoFocus
                 />
               </div>
@@ -649,59 +639,64 @@ function CustomCreateModal({
 
             {/* 颜色 */}
             <div>
-              <label className="block text-[11px] font-medium text-text-muted mb-1.5">空间颜色</label>
+              <label className="block mb-1.5" style={{ fontFamily: 'var(--font-hand-sm)', fontSize: 12, color: 'var(--color-pencil)' }}>空间颜色</label>
               <ColorPicker value={color} onChange={setColor} />
             </div>
 
             {/* 系统提示词 */}
             <div>
-              <label className="block text-[11px] font-medium text-text-muted mb-1">系统提示词</label>
+              <label className="block mb-0.5" style={{ fontFamily: 'var(--font-hand-sm)', fontSize: 12, color: 'var(--color-pencil)' }}>系统提示词</label>
               <textarea
                 value={systemPrompt} onChange={(e) => setSystemPrompt(e.target.value)}
                 placeholder="定义 AI 助手的角色、工作方式和回答风格"
                 rows={3}
-                className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-xs font-mono placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                className="w-full border-none outline-none bg-transparent resize-none"
+                style={{ borderBottom: '1.5px solid var(--color-pencil)', padding: '4px 2px', fontFamily: 'var(--font-hand-alt)', fontSize: 14, color: 'var(--color-ink)' }}
               />
-              <p className="text-[10px] text-text-muted mt-0.5">工具使用规则由框架自动注入，无需手动编写</p>
+              <p style={{ fontFamily: 'var(--font-hand-sm)', fontSize: 10, color: 'var(--color-pencil)', marginTop: 2 }}>工具使用规则由框架自动注入，无需手动编写</p>
             </div>
 
             {/* 描述 */}
             <div>
-              <label className="block text-[11px] font-medium text-text-muted mb-1">主题描述</label>
+              <label className="block mb-0.5" style={{ fontFamily: 'var(--font-hand-sm)', fontSize: 12, color: 'var(--color-pencil)' }}>主题描述</label>
               <textarea
                 value={description} onChange={(e) => setDescription(e.target.value)}
-                placeholder="简要说明该空间的用途和目标"
-                rows={2}
-                className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-sm placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                placeholder="你想探索什么话题？"
+                rows={1}
+                className="w-full border-none outline-none bg-transparent resize-none"
+                style={{ borderBottom: '1.5px solid var(--color-pencil)', padding: '4px 2px', fontFamily: 'var(--font-hand-alt)', fontSize: 14, color: 'var(--color-ink)' }}
               />
             </div>
 
             {/* 预期产物 */}
             <div>
-              <label className="block text-[11px] font-medium text-text-muted mb-1">预期产物</label>
-              <textarea
+              <label className="block mb-0.5" style={{ fontFamily: 'var(--font-hand-sm)', fontSize: 12, color: 'var(--color-pencil)' }}>预期产物（逗号分隔，可选）</label>
+              <input
                 value={expectedArtifacts} onChange={(e) => setExpectedArtifacts(e.target.value)}
-                placeholder="如：一份 PRD 和竞品分析报告"
-                rows={2}
-                className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-sm placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                placeholder="PRD 文档, 技术方案, 竞品分析"
+                className="w-full border-none outline-none bg-transparent"
+                style={{ borderBottom: '1.5px solid var(--color-pencil)', padding: '4px 2px', fontFamily: 'var(--font-hand)', fontSize: 14, color: 'var(--color-ink)' }}
               />
             </div>
 
             {/* 模式 */}
             <div>
-              <label className="block text-[11px] font-medium text-text-muted mb-1.5">空间模式</label>
-              <div className="flex gap-2">
+              <label className="block mb-1" style={{ fontFamily: 'var(--font-hand-sm)', fontSize: 12, color: 'var(--color-pencil)' }}>空间模式</label>
+              <div className="flex gap-3">
                 {(['AUTO', 'PRO'] as const).map((m) => (
                   <button key={m} onClick={() => setMode(m)}
-                    className={cn(
-                      'flex-1 py-2.5 rounded-lg border text-sm font-medium transition-all',
-                      mode === m ? 'border-primary bg-primary-light text-primary shadow-sm' : 'border-border bg-surface text-text-secondary hover:bg-muted',
-                    )}
+                    className="flex-1 py-1.5 rounded-lg cursor-pointer border-2 transition-all"
+                    style={{
+                      fontFamily: 'var(--font-hand)', fontSize: 14,
+                      borderColor: mode === m ? (m === 'AUTO' ? 'var(--color-blue-pen)' : 'var(--color-red-pen)') : 'rgba(42,42,42,0.1)',
+                      background: mode === m ? (m === 'AUTO' ? 'rgba(58,107,197,0.08)' : 'rgba(201,74,74,0.08)') : 'transparent',
+                      color: mode === m ? (m === 'AUTO' ? 'var(--color-blue-pen)' : 'var(--color-red-pen)') : 'var(--color-pencil)',
+                    }}
                   >
-                    {m}
-                    <span className="block text-[10px] font-normal mt-0.5 text-text-muted">
-                      {m === 'AUTO' ? 'AI 自动分裂，无感生长' : 'AI 判断后请求确认'}
-                    </span>
+                    <div className="font-semibold">{m}</div>
+                    <div style={{ fontFamily: 'var(--font-hand-sm)', fontSize: 11 }}>
+                      {m === 'AUTO' ? 'AI 自动分裂节点' : '分裂前请求确认'}
+                    </div>
                   </button>
                 ))}
               </div>
@@ -710,38 +705,39 @@ function CustomCreateModal({
             {/* 高级配置展开按钮 */}
             <button
               onClick={() => setShowAdvanced(!showAdvanced)}
-              className="flex items-center gap-1.5 text-xs text-text-muted hover:text-primary transition-colors"
+              className="flex items-center gap-1.5 bg-transparent border-none cursor-pointer transition-colors hover:opacity-70"
+              style={{ fontFamily: 'var(--font-hand)', fontSize: 14, color: 'var(--color-pencil)' }}
             >
               {showAdvanced ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
               高级配置（预设节点 & 技能 & 记忆提炼）
               {(presetSessions.length > 0 || skills.length > 0 || consolidatePrompt || integratePrompt) && (
-                <span className="text-[10px] bg-primary-light text-primary px-1.5 rounded-full">
+                <span className="px-1.5 rounded-full" style={{ fontFamily: 'var(--font-hand-sm)', fontSize: 10, background: 'rgba(58,107,197,0.08)', color: 'var(--color-blue-pen)' }}>
                   {presetSessions.length + skills.length + (consolidatePrompt ? 1 : 0) + (integratePrompt ? 1 : 0)}
                 </span>
               )}
             </button>
 
-            {error && <p className="text-sm text-error bg-error/10 rounded-lg px-3 py-2">{error}</p>}
+            {error && <p className="rounded-lg px-3 py-2" style={{ fontFamily: 'var(--font-hand-alt)', fontSize: 14, color: 'var(--color-red-pen)', background: 'rgba(201,74,74,0.08)' }}>{error}</p>}
           </div>
 
           {/* 底部按钮 */}
-          <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-border">
-            <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm text-text-secondary hover:bg-muted transition-colors">取消</button>
+          <div className="flex justify-end gap-2 mt-6 pt-4" style={{ borderTop: '1px dashed rgba(42,42,42,0.12)' }}>
+            <button onClick={onClose} className="px-4 py-2 rounded-lg bg-transparent border-none cursor-pointer transition-colors hover:opacity-70" style={{ fontFamily: 'var(--font-hand)', fontSize: 15, color: 'var(--color-pencil)' }}>cancel</button>
             <button
               onClick={handleCreate}
               disabled={!name.trim() || loading}
-              className="px-5 py-2 rounded-lg text-sm font-medium bg-primary text-white hover:bg-primary-dark transition-colors disabled:opacity-40"
-              style={{ backgroundColor: color }}
+              className="px-5 py-2 rounded-md border-none cursor-pointer transition-transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40"
+              style={{ fontFamily: 'var(--font-hand)', fontSize: 16, backgroundColor: color, color: '#fff' }}
             >
-              {loading ? '创建中...' : '创建空间'}
+              {loading ? 'creating...' : 'create space'}
             </button>
           </div>
         </div>
 
         {/* 右栏：高级配置（可折叠） */}
         {showAdvanced && (
-          <div className="w-[400px] border-l border-border p-5 overflow-y-auto bg-surface/50">
-            <h3 className="text-sm font-semibold mb-3">高级配置</h3>
+          <div className="w-[400px] p-5 overflow-y-auto" style={{ borderLeft: '1px dashed rgba(42,42,42,0.12)', background: 'rgba(42,42,42,0.02)' }}>
+            <h3 className="mb-3" style={{ fontFamily: 'var(--font-hand)', fontSize: 18, fontWeight: 600, color: 'var(--color-ink)' }}>高级配置</h3>
 
             <div className="flex border-b border-border mb-4">
               {([
@@ -833,9 +829,11 @@ function CustomCreateModal({
 
 export function SpaceList() {
   const navigate = useNavigate()
+  type Tab = 'spaces' | 'market'
+  const [tab, setTab] = useState<Tab>('spaces')
   const [spaces, setSpaces] = useState<SpaceMeta[]>([])
   const [presets, setPresets] = useState<PresetConfig[]>([])
-  const [showMarket, setShowMarket] = useState(false)
+  const [marketSelected, setMarketSelected] = useState<PresetConfig | null>(null)
   const [showCustom, setShowCustom] = useState(false)
   const [loading, setLoading] = useState(true)
 
@@ -856,91 +854,199 @@ export function SpaceList() {
   }
 
   return (
-    <div className="min-h-screen bg-bg p-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-2xl font-bold">My Space</h1>
-            <p className="text-text-muted text-sm mt-1">你的 AI 认知空间集合</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button onClick={() => setShowMarket(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary-dark transition-colors"
+    <div className="h-screen flex flex-col" style={{ background: 'var(--color-paper)' }}>
+      {/* 顶部导航 — 笔记本风格 tab 栏 */}
+      <nav className="flex items-center pt-8 pb-4 px-5" style={{ fontFamily: 'var(--font-hand)', fontSize: 26, marginBottom: 8 }}>
+        <span className="text-[36px] font-bold shrink-0" style={{ color: 'var(--color-ink)', transform: 'rotate(-2deg)', display: 'inline-block' }}>
+          MindKit
+        </span>
+        <div className="flex-1" />
+        <div className="flex items-center gap-8">
+          {([
+            { key: 'spaces' as Tab, label: 'Kit Spaces' },
+            { key: 'market' as Tab, label: 'Kit Market' },
+          ]).map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className="relative bg-transparent border-none cursor-pointer py-1 px-1 transition-all"
+              style={{
+                fontFamily: 'var(--font-hand)', fontSize: 24,
+                color: tab === t.key ? 'var(--color-ink)' : 'var(--color-pencil)',
+              }}
             >
-              <Store size={16} /> Kit Market
+              {tab === t.key && (
+                <span className="absolute left-0 right-0 -bottom-1 h-[3px] rounded-full" style={{ background: 'var(--color-blue-pen)', opacity: 0.35 }} />
+              )}
+              <span className="relative">{t.label}</span>
             </button>
-            <button onClick={() => setShowCustom(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-card text-sm font-medium text-text-secondary hover:bg-muted transition-colors"
-            >
-              <Wrench size={16} /> 自定义创建
-            </button>
-          </div>
+          ))}
         </div>
+        <div className="flex-1" />
+      </nav>
 
-        {loading ? (
-          <div className="text-center text-text-muted py-20">加载中...</div>
-        ) : spaces.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-text-muted">
-            <GitBranch size={48} className="mb-4 opacity-30" />
-            <p className="text-lg mb-2">还没有任何空间</p>
-            <div className="flex gap-3 mt-2">
-              <button onClick={() => setShowMarket(true)} className="flex items-center gap-1.5 text-primary hover:underline text-sm">
-                <Store size={14} /> 从 Market 选择
-              </button>
-              <span className="text-text-muted">或</span>
-              <button onClick={() => setShowCustom(true)} className="flex items-center gap-1.5 text-primary hover:underline text-sm">
-                <Wrench size={14} /> 自定义创建
+      {/* 内容区 */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden flex justify-center pb-8" style={{ paddingTop: 16 }}>
+        {/* ─── Kit Spaces tab ─── */}
+        {tab === 'spaces' && (
+          <div className="w-full max-w-3xl px-6">
+            {/* 标题区 */}
+            <div className="flex items-end justify-between mb-6">
+              <div>
+                <h1 className="text-[32px] font-bold" style={{ fontFamily: 'var(--font-hand)', color: 'var(--color-ink)', transform: 'rotate(-1deg)', display: 'inline-block' }}>
+                  My Space
+                </h1>
+                <p style={{ fontFamily: 'var(--font-hand-alt)', fontSize: 16, color: 'var(--color-pencil)', marginTop: 2 }}>
+                  你的 AI 认知空间集合
+                </p>
+              </div>
+              <button onClick={() => setShowCustom(true)}
+                className="flex items-center gap-2 rounded-lg cursor-pointer transition-transform hover:scale-[1.02] active:scale-[0.98] border-none"
+                style={{ fontFamily: 'var(--font-hand)', fontSize: 17, padding: '8px 10px', background: 'var(--color-blue-pen)', color: '#fff' }}
+              >
+                <Plus size={18} />
+                创建新空间
               </button>
             </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {spaces.map((s) => (
-              <div key={s.id} onClick={() => navigate(`/kit/${s.id}`)}
-                className="bg-card rounded-xl border border-border p-5 cursor-pointer hover:border-primary/40 hover:shadow-md transition-all group"
-                style={{ borderLeftColor: s.color, borderLeftWidth: 3 }}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-base truncate group-hover:text-primary transition-colors">
-                      {s.emoji} {s.name}
-                    </h3>
-                    {s.description && <p className="text-sm text-text-muted mt-1 line-clamp-2">{s.description}</p>}
-                  </div>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 ml-2"
-                    style={{ backgroundColor: s.color + '20', color: s.color }}
-                  >
-                    {s.mode}
-                  </span>
-                </div>
-                {s.expectedArtifacts && (
-                  <p className="text-[11px] text-text-muted mt-2 line-clamp-1">
-                    📎 {s.expectedArtifacts}
-                  </p>
-                )}
-                <div className="flex items-center gap-4 mt-3 text-xs text-text-muted">
-                  {s.presetSessions && s.presetSessions.length > 0 && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border/50 font-medium">
-                      {Object.keys(s.activatedPresets ?? {}).length}/{s.presetSessions.length} 已点亮
-                    </span>
-                  )}
-                  <span>{new Date(s.createdAt).toLocaleDateString('zh-CN')}</span>
-                  <button onClick={(e) => { e.stopPropagation(); handleDelete(s.id, s.name) }}
-                    className="ml-auto text-text-muted hover:text-error transition-colors"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
+
+            {loading ? (
+              <div className="text-center py-20" style={{ color: 'var(--color-pencil)', fontFamily: 'var(--font-hand-alt)', fontSize: 16 }}>loading...</div>
+            ) : spaces.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20" style={{ color: 'var(--color-pencil)' }}>
+                <GitBranch size={48} className="mb-4 opacity-30" />
+                <p style={{ fontFamily: 'var(--font-hand)', fontSize: 24, color: 'var(--color-pencil)', marginBottom: 16 }}>还没有任何空间</p>
+                <button onClick={() => setShowCustom(true)}
+                  className="flex items-center gap-2 px-6 py-3 rounded-lg cursor-pointer transition-transform hover:scale-[1.02] border-none mb-4"
+                  style={{ fontFamily: 'var(--font-hand)', fontSize: 20, background: 'var(--color-blue-pen)', color: '#fff' }}
+                >
+                  <Plus size={20} /> 创建你的第一个 Kit
+                </button>
+                <button onClick={() => setTab('market')}
+                  className="bg-transparent border-none cursor-pointer underline"
+                  style={{ fontFamily: 'var(--font-hand-alt)', fontSize: 16, color: 'var(--color-blue-pen)' }}
+                >
+                  或去 Kit Market 探索模板
+                </button>
               </div>
-            ))}
+            ) : (
+              <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
+                {spaces.map((s, idx) => (
+                  <div key={s.id} onClick={() => navigate(`/kit/${s.id}`)}
+                    className="sticky-note tape-top relative cursor-pointer transition-transform hover:scale-[1.03] group"
+                    style={stickyStyle(idx, { minHeight: 180 })}
+                  >
+                    <span className="tape" style={{ transform: `translateX(-50%) rotate(${TAPE_ROTATIONS[idx % TAPE_ROTATIONS.length]})` }} />
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-[24px]">{s.emoji}</span>
+                      <h3 className="text-[24px] font-semibold truncate" style={{ fontFamily: 'var(--font-hand)', color: 'var(--color-blue-pen)' }}>
+                        {s.name}
+                      </h3>
+                    </div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="px-2 py-0.5 rounded-full" style={{
+                        fontFamily: 'var(--font-hand-sm)', fontSize: 11,
+                        background: s.mode === 'AUTO' ? 'rgba(58,107,197,0.1)' : 'rgba(201,74,74,0.1)',
+                        color: s.mode === 'AUTO' ? 'var(--color-blue-pen)' : 'var(--color-red-pen)',
+                        border: `1px solid ${s.mode === 'AUTO' ? 'rgba(58,107,197,0.2)' : 'rgba(201,74,74,0.2)'}`,
+                      }}>
+                        {s.mode}
+                      </span>
+                    </div>
+                    {s.description && (
+                      <p className="mb-3 line-clamp-2" style={{ fontFamily: 'var(--font-hand-alt)', fontSize: 15, color: 'var(--color-ink)', lineHeight: 1.6 }}>
+                        {s.description}
+                      </p>
+                    )}
+                    {s.expectedArtifacts && (
+                      <p className="mb-2 line-clamp-1" style={{ fontFamily: 'var(--font-hand-sm)', fontSize: 11, color: 'var(--color-pencil)' }}>
+                        📎 {s.expectedArtifacts}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-3" style={{ fontFamily: 'var(--font-hand-sm)', fontSize: 13, color: 'var(--color-pencil)' }}>
+                      <span>{new Date(s.createdAt).toLocaleDateString('zh-CN')}</span>
+                      {s.presetSessions && s.presetSessions.length > 0 && (
+                        <span style={{ color: 'var(--color-blue-pen)' }}>
+                          · {Object.keys(s.activatedPresets ?? {}).length}/{s.presetSessions.length} lit
+                        </span>
+                      )}
+                      <button onClick={(e) => { e.stopPropagation(); handleDelete(s.id, s.name) }}
+                        className="ml-auto bg-transparent border-none cursor-pointer opacity-0 group-hover:opacity-60 transition-opacity p-1"
+                        style={{ color: 'var(--color-red-pen)' }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ─── Kit Market tab ─── */}
+        {tab === 'market' && (
+          <div className="w-full max-w-4xl px-6 mx-auto">
+            <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
+              {presets.map((p, idx) => (
+                <div
+                  key={p.dirName}
+                  className="sticky-note tape-top relative flex flex-col overflow-hidden transition-transform hover:scale-[1.03]"
+                  style={stickyStyle(idx, { minHeight: 200 })}
+                >
+                  <span className="tape" style={{ transform: `translateX(-50%) rotate(${TAPE_ROTATIONS[idx % TAPE_ROTATIONS.length]})` }} />
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <h3 className="text-[20px] font-semibold" style={{ fontFamily: 'var(--font-hand)', color: 'var(--color-blue-pen)' }}>
+                      {p.emoji} {p.name}
+                    </h3>
+                    <div className="flex gap-1.5 shrink-0 mt-1">
+                      <span className="px-2 py-0.5 rounded-full" style={{
+                        fontFamily: 'var(--font-hand-sm)', fontSize: 11, lineHeight: '16px',
+                        background: p.mode === 'AUTO' ? 'rgba(58,107,197,0.1)' : 'rgba(201,74,74,0.1)',
+                        color: p.mode === 'AUTO' ? 'var(--color-blue-pen)' : 'var(--color-red-pen)',
+                        border: `1px solid ${p.mode === 'AUTO' ? 'rgba(58,107,197,0.2)' : 'rgba(201,74,74,0.2)'}`,
+                      }}>
+                        {p.mode}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="mb-4" style={{ fontFamily: 'var(--font-hand-alt)', fontSize: 16, color: 'var(--color-ink)', lineHeight: 1.5 }}>
+                    {p.description}
+                  </p>
+                  <div className="flex flex-col gap-3 mt-auto pt-2" style={{ borderTop: '1px dashed rgba(42,42,42,0.12)' }}>
+                    <div className="flex gap-2">
+                      {p.forkProfiles.length > 0 && (
+                        <span className="px-1.5 py-0.5 rounded" style={{ fontFamily: 'var(--font-hand-sm)', fontSize: 11, background: 'rgba(42,42,42,0.06)', color: 'var(--color-pencil)' }}>
+                          {p.forkProfiles.length} preset nodes
+                        </span>
+                      )}
+                      {p.skills.length > 0 && (
+                        <span className="px-1.5 py-0.5 rounded" style={{ fontFamily: 'var(--font-hand-sm)', fontSize: 11, background: 'rgba(42,42,42,0.06)', color: 'var(--color-pencil)' }}>
+                          {p.skills.length} skills
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => setMarketSelected(p)}
+                      className="flex items-center justify-center gap-2 w-full py-3 rounded-md cursor-pointer transition-transform hover:scale-[1.02] active:scale-[0.98] border-none"
+                      style={{ fontFamily: 'var(--font-hand)', fontSize: 18, background: 'var(--color-blue-pen)', color: '#fff' }}
+                    >
+                      <Store size={16} />
+                      应用
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
 
-      {showMarket && presets.length > 0 && (
+      {/* Market 选中后的创建弹窗 */}
+      {marketSelected && (
         <MarketModal
           presets={presets}
-          onClose={() => setShowMarket(false)}
+          initialSelected={marketSelected}
+          onClose={() => setMarketSelected(null)}
           onCreated={(meta) => navigate(`/kit/${meta.id}`)}
         />
       )}

@@ -99,14 +99,16 @@ export function SessionDetailPanel({ spaceId, sessionId, onClose }: SessionDetai
   }
 
   return (
-    <div className="absolute top-0 right-0 w-[360px] h-full bg-card/95 backdrop-blur-sm border-l border-border shadow-xl z-10 flex flex-col">
+    <div className="absolute top-0 right-0 w-[360px] h-full backdrop-blur-sm shadow-xl z-10 flex flex-col"
+      style={{ background: 'rgba(247,244,238,0.95)', borderLeft: '1.5px solid var(--color-grid-line)' }}
+    >
       {/* 标题栏 */}
-      <div className="flex items-center justify-between h-12 px-4 border-b border-border shrink-0">
-        <span className="text-[13px] font-semibold text-text truncate">
-          {detail?.type === 'main' ? 'Main Session' : detail?.type === 'child' ? detail.label : '详情'}
+      <div className="flex items-center justify-between h-12 px-4 shrink-0" style={{ borderBottom: '1.5px solid var(--color-grid-line)' }}>
+        <span className="truncate" style={{ fontFamily: 'var(--font-hand)', fontSize: 16, fontWeight: 600, color: 'var(--color-ink)' }}>
+          {detail?.type === 'main' ? 'Main Session' : detail?.type === 'child' ? detail.label : 'details'}
         </span>
-        <button onClick={onClose} className="p-1 hover:bg-surface rounded transition-colors">
-          <X size={14} className="text-text-muted" />
+        <button onClick={onClose} className="p-1 rounded transition-colors hover:opacity-60">
+          <X size={14} style={{ color: 'var(--color-pencil)' }} />
         </button>
       </div>
 
@@ -126,7 +128,7 @@ export function SessionDetailPanel({ spaceId, sessionId, onClose }: SessionDetai
           <>
             {/* 摘要 */}
             <section>
-              <h3 className="text-[11px] font-semibold text-text-muted tracking-wide mb-2">摘要</h3>
+              <h3 className="mb-2" style={{ fontFamily: 'var(--font-hand-sm)', fontSize: 12, fontWeight: 600, color: 'var(--color-pencil)', letterSpacing: '0.05em' }}>摘要</h3>
               {detail.l2 ? (
                 <div className="bg-surface rounded-lg px-3 py-2 border border-border/30">
                   <MarkdownContent text={detail.l2} />
@@ -139,7 +141,7 @@ export function SessionDetailPanel({ spaceId, sessionId, onClose }: SessionDetai
             {/* Insight */}
             {detail.insight && (
               <section>
-                <h3 className="text-[11px] font-semibold text-text-muted tracking-wide mb-2">Insight</h3>
+                <h3 className="mb-2" style={{ fontFamily: 'var(--font-hand-sm)', fontSize: 12, fontWeight: 600, color: 'var(--color-pencil)', letterSpacing: '0.05em' }}>Insight</h3>
                 <div className="bg-surface rounded-lg px-3 py-2 border border-border/30">
                   <MarkdownContent text={detail.insight} />
                 </div>
@@ -150,10 +152,11 @@ export function SessionDetailPanel({ spaceId, sessionId, onClose }: SessionDetai
             <button
               onClick={handleConsolidate}
               disabled={triggering}
-              className="flex items-center gap-2 text-[12px] text-primary hover:text-primary/80 disabled:opacity-50 transition-colors"
+              className="flex items-center gap-2 disabled:opacity-50 transition-colors hover:opacity-70"
+              style={{ fontFamily: 'var(--font-hand-sm)', fontSize: 12, color: 'var(--color-blue-pen)' }}
             >
               {triggering ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-              立即提炼
+              consolidate now
             </button>
           </>
         )}
@@ -162,7 +165,7 @@ export function SessionDetailPanel({ spaceId, sessionId, onClose }: SessionDetai
           <>
             {/* 综合分析 */}
             <section>
-              <h3 className="text-[11px] font-semibold text-text-muted tracking-wide mb-2">综合分析</h3>
+              <h3 className="mb-2" style={{ fontFamily: 'var(--font-hand-sm)', fontSize: 12, fontWeight: 600, color: 'var(--color-pencil)', letterSpacing: '0.05em' }}>综合分析</h3>
               {detail.synthesis ? (
                 <div className="bg-surface rounded-lg px-3 py-2 border border-border/30">
                   <MarkdownContent text={detail.synthesis} />
@@ -176,15 +179,16 @@ export function SessionDetailPanel({ spaceId, sessionId, onClose }: SessionDetai
             <button
               onClick={handleIntegrate}
               disabled={triggering}
-              className="flex items-center gap-2 text-[12px] text-primary hover:text-primary/80 disabled:opacity-50 transition-colors"
+              className="flex items-center gap-2 disabled:opacity-50 transition-colors hover:opacity-70"
+              style={{ fontFamily: 'var(--font-hand-sm)', fontSize: 12, color: 'var(--color-blue-pen)' }}
             >
               {triggering ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-              立即综合
+              integrate now
             </button>
 
             {/* 各节点摘要 */}
             <section>
-              <h3 className="text-[11px] font-semibold text-text-muted tracking-wide mb-2">
+              <h3 className="mb-2" style={{ fontFamily: 'var(--font-hand-sm)', fontSize: 12, fontWeight: 600, color: 'var(--color-pencil)', letterSpacing: '0.05em' }}>
                 各节点摘要 ({detail.childL2s.length})
               </h3>
               <div className="space-y-2">

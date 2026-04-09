@@ -5,7 +5,6 @@ import rehypeHighlight from 'rehype-highlight'
 import 'highlight.js/styles/atom-one-dark.css'
 import {
   Terminal,
-  ArrowUp,
   Loader2,
   ChevronDown,
   ChevronRight,
@@ -323,35 +322,72 @@ export function ChatPanel({ spaceId, sessionId, sessionLabel, onTurnComplete }: 
   }
 
   return (
-    <div className="flex flex-col h-full bg-card">
+    <div
+      className="flex flex-col h-full relative"
+      style={{
+        background: `repeating-linear-gradient(transparent, transparent 31px, var(--color-grid-line) 31px, var(--color-grid-line) 32px)`,
+        backgroundPosition: '0 8px',
+        backgroundColor: 'var(--color-paper)',
+      }}
+    >
+      {/* 左侧红色边距线 */}
+      <div
+        className="absolute top-0 bottom-0 z-[2]"
+        style={{ left: 52, width: 1, background: 'var(--color-margin-line)' }}
+      />
+
+      {/* 装订孔 */}
+      <div
+        className="absolute right-0 top-0 bottom-0 w-[2px] z-[5]"
+        style={{
+          background: `repeating-linear-gradient(transparent, transparent 28px, rgba(42,42,42,0.08) 28px, rgba(42,42,42,0.08) 30px, transparent 30px, transparent 36px)`
+        }}
+      />
+
       {/* 顶部标题栏 */}
-      <div className="flex items-center justify-between h-13 px-5 border-b border-border shrink-0">
-        <span className="text-[15px] font-semibold text-text">{sessionLabel || '选择节点'}</span>
+      <div className="flex items-center justify-between h-13 shrink-0 relative z-[3]" style={{ padding: '0 20px 0 62px' }}>
+        <span className="text-[18px] font-semibold" style={{ fontFamily: 'var(--font-hand)', color: 'var(--color-ink)' }}>{sessionLabel || 'select a node...'}</span>
       </div>
 
       {/* 消息列表 */}
-      <div className="flex-1 overflow-y-auto bg-surface px-6 py-5 space-y-4">
+      <div className="flex-1 overflow-y-auto relative z-[3] space-y-3" style={{ padding: '8px 20px 8px 62px' }}>
         {fetching && (
           <div className="flex items-center justify-center h-full">
-            <Loader2 size={20} className="animate-spin text-primary" />
+            <Loader2 size={20} className="animate-spin" style={{ color: 'var(--color-pencil)' }} />
           </div>
         )}
         {!fetching && items.length === 0 && sessionId && (
           <div className="flex items-center justify-center h-full">
-            <p className="text-sm text-text-muted">输入消息开始对话</p>
+            <p className="text-center mt-20" style={{ fontFamily: 'var(--font-hand-alt)', fontSize: 18, color: 'var(--color-pencil)' }}>
+              scribble something to start...
+            </p>
           </div>
         )}
         {!fetching && !sessionId && (
           <div className="flex items-center justify-center h-full">
-            <p className="text-sm text-text-muted">选择一个节点开始对话</p>
+            <p className="text-center mt-20" style={{ fontFamily: 'var(--font-hand-alt)', fontSize: 18, color: 'var(--color-pencil)' }}>
+              select a node to start...
+            </p>
           </div>
         )}
         {items.map((item) => (
           <div key={item.id}>
             {item.kind === 'user' ? (
               <div className="flex justify-end">
-                <div className="bg-primary text-white rounded-xl rounded-br-sm px-3.5 py-2.5 max-w-md transition-shadow hover:shadow-lg">
-                  <p className="text-[13px] leading-relaxed">{item.content}</p>
+                <div
+                  style={{
+                    maxWidth: '80%',
+                    padding: '10px 14px',
+                    borderRadius: '16px 16px 4px 16px',
+                    background: 'rgba(58,107,197,0.12)',
+                    border: '1.5px solid rgba(58,107,197,0.18)',
+                    fontFamily: 'var(--font-hand)',
+                    fontSize: 15,
+                    color: 'var(--color-blue-pen)',
+                    lineHeight: 1.6,
+                  }}
+                >
+                  {item.content}
                 </div>
               </div>
             ) : item.kind === 'tool' ? (
@@ -360,11 +396,23 @@ export function ChatPanel({ spaceId, sessionId, sessionLabel, onTurnComplete }: 
               </div>
             ) : (
               <div className="space-y-2">
-                <div className="bg-card rounded-xl rounded-bl-sm px-3.5 py-2.5 max-w-lg shadow-sm border border-border/30 transition-shadow hover:shadow-md">
+                <div
+                  style={{
+                    maxWidth: '80%',
+                    padding: '10px 14px',
+                    borderRadius: '16px 16px 16px 4px',
+                    background: 'rgba(42,42,42,0.06)',
+                    border: '1.5px solid rgba(42,42,42,0.08)',
+                    fontFamily: 'var(--font-hand-alt)',
+                    fontSize: 14,
+                    color: 'var(--color-ink)',
+                    lineHeight: 1.6,
+                  }}
+                >
                   <MarkdownMessage text={item.content} streaming={item.streaming} />
                 </div>
                 {item.turnStats && (item.turnStats.toolRoundCount > 0 || item.turnStats.toolCallsExecuted > 0) && (
-                  <div className="flex items-center gap-3 text-[10px] text-text-muted">
+                  <div className="flex items-center gap-3" style={{ fontFamily: 'var(--font-hand-sm)', fontSize: 11, color: 'var(--color-pencil)' }}>
                     <span>{item.turnStats.toolRoundCount} tool rounds</span>
                     <span>{item.turnStats.toolCallsExecuted} tool calls</span>
                   </div>
@@ -376,30 +424,35 @@ export function ChatPanel({ spaceId, sessionId, sessionLabel, onTurnComplete }: 
         <div ref={messagesEndRef} />
       </div>
 
-      {/* 输入框（复刻 devtools 样式） */}
-      <div className="flex items-center gap-2.5 h-14 px-5 border-t border-border bg-card shrink-0">
-        <div className="flex items-center gap-2 flex-1 h-9 px-3 bg-surface rounded-[10px] border border-border transition-all duration-200 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10">
-          <Terminal size={14} className="text-text-muted shrink-0" />
-          <input
-            type="text"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); handleSend() } }}
-            placeholder={sessionId ? '输入消息...' : '请先选择节点'}
-            disabled={!sessionId}
-            className="flex-1 bg-transparent text-xs outline-none placeholder:text-text-muted disabled:opacity-50"
-          />
-        </div>
+      {/* 输入区 — 笔记本风格 */}
+      <div className="flex items-center gap-3 relative z-[3]" style={{ padding: '12px 20px 16px 62px' }}>
+        <input
+          type="text"
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); handleSend() } }}
+          placeholder={sessionId ? 'scribble something...' : 'select a node first'}
+          disabled={!sessionId}
+          className="flex-1 border-none outline-none bg-transparent disabled:opacity-40"
+          style={{
+            borderBottom: '1.5px solid var(--color-pencil)',
+            padding: '6px 2px',
+            fontFamily: 'var(--font-hand)',
+            fontSize: 16,
+            color: 'var(--color-blue-pen)',
+          }}
+        />
         <button
           onClick={handleSend}
           disabled={!inputValue.trim() || !sessionId || sending}
-          className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200 ${
-            inputValue.trim() && sessionId && !sending
-              ? 'bg-primary hover:bg-primary/90 scale-100 shadow-md'
-              : 'bg-primary/40 scale-95'
-          }`}
+          className="w-10 h-10 border-2 bg-transparent text-lg cursor-pointer transition-transform hover:scale-110 hover:rotate-5 active:scale-95 disabled:opacity-40"
+          style={{
+            borderColor: 'var(--color-ink)',
+            borderRadius: '45% 55% 50% 50% / 50% 45% 55% 50%',
+            color: 'var(--color-ink)',
+          }}
         >
-          {sending ? <Loader2 size={16} className="text-white animate-spin" /> : <ArrowUp size={16} className="text-white" />}
+          {sending ? <Loader2 size={16} className="animate-spin" /> : '✒'}
         </button>
       </div>
     </div>

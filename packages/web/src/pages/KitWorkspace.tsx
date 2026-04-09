@@ -134,11 +134,11 @@ export function KitWorkspace() {
 
   if (!spaceId) {
     return (
-      <div className="h-screen flex items-center justify-center text-text-muted">
+      <div className="h-screen flex items-center justify-center" style={{ background: 'var(--color-paper)', color: 'var(--color-pencil)', fontFamily: 'var(--font-hand-alt)' }}>
         <div className="text-center">
-          <p>空间不存在</p>
-          <button onClick={() => navigate('/')} className="text-primary text-sm mt-2 hover:underline">
-            返回列表
+          <p style={{ fontSize: 18 }}>space not found</p>
+          <button onClick={() => navigate('/')} style={{ color: 'var(--color-blue-pen)', fontSize: 14, fontFamily: 'var(--font-hand-sm)' }} className="mt-2 hover:underline">
+            back to list
           </button>
         </div>
       </div>
@@ -147,19 +147,19 @@ export function KitWorkspace() {
 
   if (loading) {
     return (
-      <div className="h-screen flex items-center justify-center text-text-muted">
-        <p className="text-sm">加载中...</p>
+      <div className="h-screen flex items-center justify-center" style={{ background: 'var(--color-paper)', color: 'var(--color-pencil)', fontFamily: 'var(--font-hand-alt)' }}>
+        <p style={{ fontSize: 16 }}>loading...</p>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="h-screen flex items-center justify-center text-text-muted">
+      <div className="h-screen flex items-center justify-center" style={{ background: 'var(--color-paper)', fontFamily: 'var(--font-hand-alt)' }}>
         <div className="text-center">
-          <p className="text-red-500">{error}</p>
-          <button onClick={() => navigate('/')} className="text-primary text-sm mt-2 hover:underline">
-            返回列表
+          <p style={{ color: 'var(--color-red-pen)', fontSize: 16 }}>{error}</p>
+          <button onClick={() => navigate('/')} style={{ color: 'var(--color-blue-pen)', fontSize: 14, fontFamily: 'var(--font-hand-sm)' }} className="mt-2 hover:underline">
+            back to list
           </button>
         </div>
       </div>
@@ -167,25 +167,34 @@ export function KitWorkspace() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-bg">
-      {/* 顶栏 */}
-      <div className="h-12 px-4 flex items-center border-b border-border bg-card shrink-0">
+    <div className="h-screen flex flex-col" style={{ background: 'var(--color-paper)' }}>
+      {/* 顶栏 — 笔记本风格 */}
+      <div className="h-12 px-4 flex items-center shrink-0" style={{ borderBottom: '1.5px solid var(--color-grid-line)' }}>
         <button
           onClick={() => navigate('/')}
-          className="flex items-center gap-1 text-sm text-text-secondary hover:text-text transition-colors mr-4"
+          className="flex items-center gap-1 mr-4 transition-colors hover:opacity-70"
+          style={{ fontFamily: 'var(--font-hand-sm)', fontSize: 13, color: 'var(--color-pencil)' }}
         >
-          <ArrowLeft size={16} />
-          返回 Space
+          <ArrowLeft size={14} style={{ color: 'var(--color-pencil)' }} />
+          back
         </button>
-        <h2 className="font-semibold text-sm">{spaceMeta?.name ?? spaceId}</h2>
+        <h2 style={{ fontFamily: 'var(--font-hand)', fontSize: 20, fontWeight: 600, color: 'var(--color-ink)' }}>
+          {spaceMeta?.name ?? spaceId}
+        </h2>
         {spaceMeta?.mode && (
-          <span className="text-xs px-2 py-0.5 rounded-full bg-primary-light text-primary font-medium ml-2">
+          <span className="ml-2 px-2 py-0.5 rounded-full" style={{
+            fontFamily: 'var(--font-hand-sm)', fontSize: 11,
+            background: 'rgba(58,107,197,0.08)', color: 'var(--color-blue-pen)',
+          }}>
             {spaceMeta.mode}
           </span>
         )}
         {spaceMeta?.presetSessions && spaceMeta.presetSessions.length > 0 && (
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border/50 font-medium text-text-muted ml-2">
-            {Object.keys(activatedPresets).length}/{spaceMeta.presetSessions.length} 已点亮
+          <span className="ml-2 px-1.5 py-0.5 rounded" style={{
+            fontFamily: 'var(--font-hand-sm)', fontSize: 10,
+            background: 'rgba(42,42,42,0.04)', border: '1px solid rgba(42,42,42,0.06)', color: 'var(--color-pencil)',
+          }}>
+            {Object.keys(activatedPresets).length}/{spaceMeta.presetSessions.length} lit
           </span>
         )}
       </div>
@@ -193,7 +202,7 @@ export function KitWorkspace() {
       {/* 主内容区 — 左右对半 */}
       <div className="flex-1 flex overflow-hidden">
         {/* 左侧：对话面板 */}
-        <div className="w-1/2 border-r border-border">
+        <div className="w-1/2" style={{ borderRight: '1.5px solid var(--color-grid-line)' }}>
           <ChatPanel
             spaceId={spaceId}
             sessionId={activeNode?.id ?? null}

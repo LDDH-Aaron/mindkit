@@ -18,21 +18,21 @@ interface Camera {
   zoom: number
 }
 
-/** 颜色配置 */
+/** 颜色配置 — 纸张笔记本风格 */
 const COLORS = {
-  bg: '#F8FAFC',
-  bgEdge: '#F1F5F9',
-  line: 'rgba(99,102,241,0.3)',
-  lineHighlight: 'rgba(99,102,241,0.7)',
-  lineDim: 'rgba(99,102,241,0.1)',
-  mainNode: '#6366F1',
-  mainGlow: 'rgba(99,102,241,0.3)',
-  childNode: '#8B5CF6',
-  childGlow: 'rgba(139,92,246,0.2)',
-  leafNode: '#22C55E',
-  leafGlow: 'rgba(34,197,94,0.2)',
-  inactiveNode: '#4B5563',
-  inactiveGlow: 'rgba(75,85,99,0.1)',
+  bg: '#f7f4ee',
+  bgEdge: '#f2efe8',
+  line: 'rgba(58,107,197,0.25)',
+  lineHighlight: 'rgba(58,107,197,0.6)',
+  lineDim: 'rgba(58,107,197,0.08)',
+  mainNode: '#3a6bc5',
+  mainGlow: 'rgba(58,107,197,0.3)',
+  childNode: '#7e57c2',
+  childGlow: 'rgba(126,87,194,0.2)',
+  leafNode: '#5ba85b',
+  leafGlow: 'rgba(91,168,91,0.2)',
+  inactiveNode: 'rgba(34,34,34,0.32)',
+  inactiveGlow: 'rgba(34,34,34,0.06)',
 }
 
 /** 同心环布局算法 */
@@ -259,14 +259,14 @@ function renderFrame(
 
     // 标签
     if (isInactive) {
-      ctx.font = '400 9px Outfit, system-ui'
+      ctx.font = '400 9px Caveat, FangSong, cursive'
       ctx.fillStyle = COLORS.inactiveNode
       ctx.globalAlpha = 0.4
       ctx.textAlign = 'left'
       ctx.fillText(node.label, drawX + animatedSize + 6, drawY + 4)
     } else {
       const isMain = node.parentId === null
-      ctx.font = `${isMain ? '600' : '500'} ${isMain ? 12 : 10}px Outfit, system-ui`
+      ctx.font = `${isMain ? '600' : '500'} ${isMain ? 12 : 10}px Caveat, FangSong, cursive`
       ctx.fillStyle = node.color
       ctx.globalAlpha = dimmed ? 0.2 : 0.9
       ctx.textAlign = 'left'
