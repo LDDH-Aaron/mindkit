@@ -14,6 +14,8 @@ export interface SpaceMeta {
   integratePrompt?: string
   presetSessions?: PresetSession[]
   skills?: SpaceSkill[]
+  /** preset 激活映射：profileName → sessionId */
+  activatedPresets?: Record<string, string>
 }
 
 /** 预设节点 */
@@ -80,9 +82,11 @@ export interface TopoNode {
   id: string
   label: string
   parentId: string | null
-  status: 'active' | 'archived'
+  status: 'active' | 'archived' | 'inactive'
   turns: number
   children: string[]
+  /** 仅未激活虚拟节点：对应的 preset profile name */
+  presetName?: string
 }
 
 /** L3 对话记录（含 tool 消息和 metadata） */
