@@ -183,6 +183,11 @@ export function KitWorkspace() {
             {spaceMeta.mode}
           </span>
         )}
+        {spaceMeta?.presetSessions && spaceMeta.presetSessions.length > 0 && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border/50 font-medium text-text-muted ml-2">
+            {Object.keys(activatedPresets).length}/{spaceMeta.presetSessions.length} 已点亮
+          </span>
+        )}
       </div>
 
       {/* 主内容区 — 左右对半 */}

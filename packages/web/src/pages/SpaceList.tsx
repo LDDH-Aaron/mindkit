@@ -919,6 +919,11 @@ export function SpaceList() {
                   </p>
                 )}
                 <div className="flex items-center gap-4 mt-3 text-xs text-text-muted">
+                  {s.presetSessions && s.presetSessions.length > 0 && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border/50 font-medium">
+                      {Object.keys(s.activatedPresets ?? {}).length}/{s.presetSessions.length} 已点亮
+                    </span>
+                  )}
                   <span>{new Date(s.createdAt).toLocaleDateString('zh-CN')}</span>
                   <button onClick={(e) => { e.stopPropagation(); handleDelete(s.id, s.name) }}
                     className="ml-auto text-text-muted hover:text-error transition-colors"
