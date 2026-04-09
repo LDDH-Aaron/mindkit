@@ -278,7 +278,7 @@ export function createSpaceAgent(ctx: SpaceFactoryContext): StelloAgent {
     },
     orchestration: {
       scheduler: new Scheduler({
-        consolidation: { trigger: 'everyNTurns', everyNTurns: 3 },
+        consolidation: { trigger: 'onSwitch' },
         integration: { trigger: 'afterConsolidate' },
       }),
       hooks: {
