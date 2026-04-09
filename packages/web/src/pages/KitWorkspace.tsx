@@ -32,6 +32,7 @@ export function KitWorkspace() {
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [detailSessionId, setDetailSessionId] = useState<string | null>(null)
+  const [activatedPresets, setActivatedPresets] = useState<Record<string, string>>({})
 
   /** 拉取拓扑并扁平化 */
   const refreshTopology = useCallback(async () => {
@@ -63,6 +64,7 @@ export function KitWorkspace() {
 
         const meta = spaces.find((s) => s.id === spaceId) ?? null
         setSpaceMeta(meta)
+        setActivatedPresets(meta?.activatedPresets ?? {})
 
         const flat = flattenTree(tree, null)
         setNodes(flat)
@@ -89,6 +91,13 @@ export function KitWorkspace() {
       try {
         const msg: WsMessage = JSON.parse(evt.data as string)
         if (msg.type === 'space_event' && msg.event.kind === 'node_forked') {
+          const payload = msg.event.payload as { activatedPreset?: string; nodeId?: string }
+          if (payload.activatedPreset && payload.nodeId) {
+            setActivatedPresets((prev) => ({
+              ...prev,
+              [payload.activatedPreset!]: payload.nodeId as string,
+            }))
+          }
           refreshTopology()
         }
       } catch {
@@ -99,9 +108,28 @@ export function KitWorkspace() {
     return () => { ws.close() }
   }, [spaceId, refreshTopology])
 
+  /** 合并真实拓扑节点 + 未激活 preset 虚拟节点 */
+  const mergedNodes = useMemo(() => {
+    if (!spaceMeta?.presetSessions?.length) return nodes
+
+    const virtualNodes: TopoNode[] = spaceMeta.presetSessions
+      .filter((ps) => !activatedPresets[ps.name])
+      .map((ps) => ({
+        id: `preset:${ps.name}`,
+        label: ps.label,
+        parentId: null,
+        status: 'inactive' as const,
+        turns: 0,
+        children: [],
+        presetName: ps.name,
+      }))
+
+    return [...nodes, ...virtualNodes]
+  }, [nodes, spaceMeta?.presetSessions, activatedPresets])
+
   const activeNode = useMemo(
-    () => nodes.find((n) => n.id === selectedNodeId) ?? null,
-    [nodes, selectedNodeId],
+    () => mergedNodes.find((n) => n.id === selectedNodeId) ?? null,
+    [mergedNodes, selectedNodeId],
   )
 
   if (!spaceId) {
@@ -172,10 +200,16 @@ export function KitWorkspace() {
         {/* 右侧：拓扑图 + 详情面板 */}
         <div className="w-1/2 relative">
           <TopologyCanvas
-            nodes={nodes}
+            nodes={mergedNodes}
             selectedNodeId={selectedNodeId}
-            onNodeSelect={setSelectedNodeId}
-            onNodeDetail={setDetailSessionId}
+            onNodeSelect={(nodeId) => {
+              if (nodeId.startsWith('preset:')) return
+              setSelectedNodeId(nodeId)
+            }}
+            onNodeDetail={(nodeId) => {
+              if (nodeId.startsWith('preset:')) return
+              setDetailSessionId(nodeId)
+            }}
           />
           {detailSessionId && spaceId && (
             <SessionDetailPanel
