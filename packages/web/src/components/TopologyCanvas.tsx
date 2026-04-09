@@ -31,16 +31,23 @@ const COLORS = {
   childGlow: 'rgba(139,92,246,0.2)',
   leafNode: '#22C55E',
   leafGlow: 'rgba(34,197,94,0.2)',
+  inactiveNode: '#4B5563',
+  inactiveGlow: 'rgba(75,85,99,0.1)',
 }
 
 /** 同心环布局算法 */
 function computeLayout(nodes: TopoNode[], width: number, height: number): LayoutNode[] {
   const cx = width / 2
   const cy = height / 2
-  const nodeMap = new Map(nodes.map((n) => [n.id, n]))
+
+  // 分离激活和未激活节点
+  const activeNodes = nodes.filter((n) => n.status !== 'inactive')
+  const inactiveNodes = nodes.filter((n) => n.status === 'inactive')
+
+  const nodeMap = new Map(activeNodes.map((n) => [n.id, n]))
   const result: LayoutNode[] = []
 
-  const root = nodes.find((n) => n.parentId === null)
+  const root = activeNodes.find((n) => n.parentId === null)
   if (!root) return result
 
   // BFS 分层
@@ -64,7 +71,7 @@ function computeLayout(nodes: TopoNode[], width: number, height: number): Layout
   }
 
   const ringSpacing = Math.min(width, height) * 0.18
-  const maxTurns = Math.max(...nodes.map((n) => n.turns), 1)
+  const maxTurns = Math.max(...activeNodes.map((n) => n.turns), 1)
 
   for (let layer = 0; layer < layers.length; layer++) {
     const ring = layers[layer]!
@@ -103,12 +110,44 @@ function computeLayout(nodes: TopoNode[], width: number, height: number): Layout
     }
   }
 
+  // 未激活 preset 节点 — 散布在外环
+  const outerRadius = ringSpacing * (layers.length + 1)
+  for (let i = 0; i < inactiveNodes.length; i++) {
+    const node = inactiveNodes[i]!
+    const angle = (2 * Math.PI * i) / Math.max(inactiveNodes.length, 1) - Math.PI / 2
+    const jitterR = Math.sin(i * 3.7) * ringSpacing * 0.1
+
+    const x = cx + Math.cos(angle) * (outerRadius + jitterR)
+    const y = cy + Math.sin(angle) * (outerRadius + jitterR)
+
+    result.push({
+      ...node,
+      x,
+      y,
+      size: 4,
+      color: COLORS.inactiveNode,
+      glowColor: COLORS.inactiveGlow,
+      brightness: 0.4,
+    })
+  }
+
   return result
 }
 
 /** 屏幕坐标 → 世界坐标 */
 function screenToWorld(sx: number, sy: number, cam: Camera): { wx: number; wy: number } {
   return { wx: sx / cam.zoom - cam.x, wy: sy / cam.zoom - cam.y }
+}
+
+/** 节点激活过渡动画状态 */
+interface NodeTransition {
+  nodeId: string
+  startX: number
+  startY: number
+  targetX: number
+  targetY: number
+  startTime: number
+  duration: number
 }
 
 /** 渲染一帧 */
@@ -120,6 +159,7 @@ function renderFrame(
   highlightedId: string | null,
   selectedId: string | null,
   time: number,
+  transitions: NodeTransition[],
 ) {
   // 背景
   const grad = ctx.createRadialGradient(width / 2, height / 2, 0, width / 2, height / 2, width)
@@ -131,17 +171,33 @@ function renderFrame(
 
   const nodeMap = new Map(nodes.map((n) => [n.id, n]))
 
+  // 构建过渡位置覆盖表，边和节点共用
+  const posOverride = new Map<string, { x: number; y: number }>()
+  for (const t of transitions) {
+    const elapsed = time - t.startTime
+    const progress = Math.min(1, elapsed / t.duration)
+    const eased = 1 - Math.pow(1 - progress, 3) // ease-out cubic
+    posOverride.set(t.nodeId, {
+      x: t.startX + (t.targetX - t.startX) * eased,
+      y: t.startY + (t.targetY - t.startY) * eased,
+    })
+  }
+
   // 画连线
   for (const node of nodes) {
+    if (node.status === 'inactive') continue
     if (!node.parentId) continue
     const parent = nodeMap.get(node.parentId)
     if (!parent) continue
 
+    const nodePos = posOverride.get(node.id) ?? { x: node.x, y: node.y }
+    const parentPos = posOverride.get(parent.id) ?? { x: parent.x, y: parent.y }
+
     const isHighlighted = highlightedId !== null && (node.id === highlightedId || parent.id === highlightedId)
 
     ctx.beginPath()
-    ctx.moveTo(parent.x, parent.y)
-    ctx.lineTo(node.x, node.y)
+    ctx.moveTo(parentPos.x, parentPos.y)
+    ctx.lineTo(nodePos.x, nodePos.y)
     ctx.strokeStyle = isHighlighted ? COLORS.lineHighlight : highlightedId ? COLORS.lineDim : COLORS.line
     ctx.lineWidth = isHighlighted ? 3 : parent.parentId === null ? 2.5 : 1.5
     ctx.shadowColor = COLORS.line
@@ -157,14 +213,33 @@ function renderFrame(
     const dimmed = highlightedId !== null && !isHighlighted && node.parentId !== highlightedId
       && !(highlightedId && nodeMap.get(highlightedId)?.parentId === node.id)
 
+    const isInactive = node.status === 'inactive'
+
+    // 应用过渡位置覆盖
+    const override = posOverride.get(node.id)
+    const drawX = override?.x ?? node.x
+    const drawY = override?.y ?? node.y
+
     // 呼吸效果
-    const pulse = Math.sin(time * 0.002 + node.x * 0.01 + node.y * 0.01) * 0.15 + 1
+    const pulse = Math.sin(time * 0.002 + drawX * 0.01 + drawY * 0.01) * 0.15 + 1
     const animatedSize = Math.max(1, node.size * (isHighlighted ? 1.2 : pulse))
 
+    // 未激活节点：虚线描边
+    if (isInactive) {
+      ctx.beginPath()
+      ctx.arc(drawX, drawY, animatedSize + 2, 0, Math.PI * 2)
+      ctx.setLineDash([3, 3])
+      ctx.strokeStyle = COLORS.inactiveNode
+      ctx.lineWidth = 1
+      ctx.globalAlpha = 0.4
+      ctx.stroke()
+      ctx.setLineDash([])
+    }
+
     ctx.beginPath()
-    ctx.arc(node.x, node.y, animatedSize, 0, Math.PI * 2)
+    ctx.arc(drawX, drawY, animatedSize, 0, Math.PI * 2)
     ctx.fillStyle = node.color
-    ctx.globalAlpha = dimmed ? 0.25 : node.brightness
+    ctx.globalAlpha = isInactive ? 0.4 : dimmed ? 0.25 : node.brightness
     ctx.shadowColor = node.glowColor
     ctx.shadowBlur = isHighlighted ? 35 : dimmed ? 4 : node.size + 8
     ctx.fill()
@@ -173,7 +248,7 @@ function renderFrame(
     // 选中光环
     if (isSelected) {
       ctx.beginPath()
-      ctx.arc(node.x, node.y, animatedSize + 5, 0, Math.PI * 2)
+      ctx.arc(drawX, drawY, animatedSize + 5, 0, Math.PI * 2)
       ctx.strokeStyle = node.color
       ctx.lineWidth = 2
       ctx.globalAlpha = 0.6 + Math.sin(time * 0.005) * 0.2
@@ -183,12 +258,20 @@ function renderFrame(
     ctx.globalAlpha = 1
 
     // 标签
-    const isMain = node.parentId === null
-    ctx.font = `${isMain ? '600' : '500'} ${isMain ? 12 : 10}px Outfit, system-ui`
-    ctx.fillStyle = node.color
-    ctx.globalAlpha = dimmed ? 0.2 : 0.9
-    ctx.textAlign = 'left'
-    ctx.fillText(node.label, node.x + animatedSize + 6, node.y + 4)
+    if (isInactive) {
+      ctx.font = '400 9px Outfit, system-ui'
+      ctx.fillStyle = COLORS.inactiveNode
+      ctx.globalAlpha = 0.4
+      ctx.textAlign = 'left'
+      ctx.fillText(node.label, drawX + animatedSize + 6, drawY + 4)
+    } else {
+      const isMain = node.parentId === null
+      ctx.font = `${isMain ? '600' : '500'} ${isMain ? 12 : 10}px Outfit, system-ui`
+      ctx.fillStyle = node.color
+      ctx.globalAlpha = dimmed ? 0.2 : 0.9
+      ctx.textAlign = 'left'
+      ctx.fillText(node.label, drawX + animatedSize + 6, drawY + 4)
+    }
     ctx.globalAlpha = 1
   }
 }
@@ -211,6 +294,8 @@ export function TopologyCanvas({ nodes, selectedNodeId, onNodeSelect, onNodeDeta
   const dragRef = useRef({ active: false, startX: 0, startY: 0 })
   const highlightedRef = useRef<string | null>(null)
   const selectedRef = useRef<string | null>(null)
+  const transitionsRef = useRef<NodeTransition[]>([])
+  const prevNodesRef = useRef<TopoNode[]>([])
 
   useEffect(() => { highlightedRef.current = highlighted }, [highlighted])
   useEffect(() => { selectedRef.current = selectedNodeId }, [selectedNodeId])
@@ -231,6 +316,46 @@ export function TopologyCanvas({ nodes, selectedNodeId, onNodeSelect, onNodeDeta
   // 布局计算
   useEffect(() => {
     nodesRef.current = computeLayout(nodes, size.width, size.height)
+  }, [nodes, size])
+
+  // 检测节点激活并触发过渡动画
+  useEffect(() => {
+    const prevInactive = new Map(
+      prevNodesRef.current.filter((n) => n.status === 'inactive').map((n) => [n.id, n])
+    )
+    const prevActiveIds = new Set(
+      prevNodesRef.current.filter((n) => n.status !== 'inactive').map((n) => n.id)
+    )
+
+    // 检测消失的虚拟节点（被真实节点替代 = 激活）
+    for (const [virtualId] of prevInactive) {
+      if (!nodes.find((n) => n.id === virtualId)) {
+        const oldLayout = nodesRef.current.find((n) => n.id === virtualId)
+        const newRealNode = nodes.find((n) => !prevActiveIds.has(n.id) && n.status !== 'inactive')
+
+        if (newRealNode && oldLayout) {
+          const targetLayout = computeLayout(
+            nodes.filter((n) => n.status !== 'inactive'),
+            size.width,
+            size.height,
+          ).find((n) => n.id === newRealNode.id)
+
+          if (targetLayout) {
+            transitionsRef.current.push({
+              nodeId: newRealNode.id,
+              startX: oldLayout.x,
+              startY: oldLayout.y,
+              targetX: targetLayout.x,
+              targetY: targetLayout.y,
+              startTime: performance.now(),
+              duration: 500,
+            })
+          }
+        }
+      }
+    }
+
+    prevNodesRef.current = nodes
   }, [nodes, size])
 
   // rAF 渲染循环
@@ -258,7 +383,12 @@ export function TopologyCanvas({ nodes, selectedNodeId, onNodeSelect, onNodeDeta
       ctx.translate(cam.x * cam.zoom, cam.y * cam.zoom)
       ctx.scale(cam.zoom, cam.zoom)
 
-      renderFrame(ctx, nodesRef.current, w, h, highlightedRef.current, selectedRef.current, time)
+      renderFrame(ctx, nodesRef.current, w, h, highlightedRef.current, selectedRef.current, time, transitionsRef.current)
+
+      // 清理已完成的动画
+      transitionsRef.current = transitionsRef.current.filter(
+        (t) => performance.now() - t.startTime < t.duration
+      )
 
       ctx.restore()
       animId = requestAnimationFrame(loop)
