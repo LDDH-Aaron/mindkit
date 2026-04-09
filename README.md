@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.png" width="480" />
+  <img src="assets/MindKitlogo.jpeg" width="480" />
 </p>
 
 <h3 align="center">AI 协作拓扑平台</h3>
@@ -100,20 +100,20 @@ MindKit 构建了全新的 Agent Session 记忆管理机制，解决了三件难
 - TypeScript · pnpm monorepo · React · Vite · TailwindCSS
 - 后端：Hono + WebSocket
 - 存储：文件系统优先，本地持久化
-- Agent 引擎：基于 [Stello SDK](https://github.com/stello-agent/stello)（Agent Cognitive Topology Engine）
+- Agent 引擎：自研认知拓扑引擎（Session 分裂 · 记忆管理 · 全局意识整合）
 
 ## 快速开始
 
 ```bash
-# Clone（含 submodule）
-git clone --recurse-submodules git@github.com:uchouT/MindKit.git
-cd MindKit
+# Clone
+git clone https://github.com/Eddiewjy/mindkit.git
+cd mindkit
 
 # 安装依赖
 pnpm install
 
-# 构建 stello 依赖（首次 / stello 代码变更后）
-pnpm --filter @stello-ai/session run build && pnpm --filter @stello-ai/core run build
+# 首次构建
+pnpm build
 
 # 启动开发服务器
 pnpm dev
@@ -129,7 +129,6 @@ cp .env.example .env
 ## 仓库结构
 
 ```
-stello/              # git submodule — Stello SDK
 packages/
   server/            # 本地后端（Hono + WS）
   demo/              # 前端 Demo
