@@ -10,7 +10,7 @@ export function registerSessionDetailRoutes(app: Hono, spaceManager: SpaceManage
     const meta = await spaceManager.getSpace(id)
     if (!meta) return c.json({ error: 'Space not found' }, 404)
 
-    const agent = spaceManager.getAgent(id, meta)
+    const agent = await spaceManager.getAgent(id, meta)
     let root: { id: string }
     try {
       root = await agent.sessions.getRoot()
@@ -48,7 +48,7 @@ export function registerSessionDetailRoutes(app: Hono, spaceManager: SpaceManage
     const meta = await spaceManager.getSpace(id)
     if (!meta) return c.json({ error: 'Space not found' }, 404)
 
-    const agent = spaceManager.getAgent(id, meta)
+    const agent = await spaceManager.getAgent(id, meta)
     const consolidateFn = agent.config.session?.consolidateFn
     if (!consolidateFn) {
       return c.json({ error: 'No consolidateFn configured' }, 400)
@@ -72,7 +72,7 @@ export function registerSessionDetailRoutes(app: Hono, spaceManager: SpaceManage
     const meta = await spaceManager.getSpace(id)
     if (!meta) return c.json({ error: 'Space not found' }, 404)
 
-    const agent = spaceManager.getAgent(id, meta)
+    const agent = await spaceManager.getAgent(id, meta)
     const mainSessionResolver = agent.config.session?.mainSessionResolver
     const integrateFn = agent.config.session?.integrateFn
     if (!mainSessionResolver || !integrateFn) {

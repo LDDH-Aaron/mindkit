@@ -218,14 +218,14 @@ export class SpaceManager {
   }
 
   /** 获取或创建 Space 对应的 StelloAgent（懒加载，单例缓存） */
-  getAgent(id: string, meta: SpaceMeta): StelloAgent {
+  async getAgent(id: string, meta: SpaceMeta): Promise<StelloAgent> {
     const cached = this.agents.get(id)
     if (cached) return cached
 
     const preset = this.presets.get(meta.presetDirName)
     if (!preset) throw new Error(`Preset not found: ${meta.presetDirName}`)
 
-    const agent = createSpaceAgent({
+    const agent = await createSpaceAgent({
       dataDir: path.join(this.spacesDir, id),
       config: preset,
       env: this.env,

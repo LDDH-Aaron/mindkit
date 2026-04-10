@@ -174,18 +174,18 @@ describe('SpaceManager', () => {
       const meta = await manager.createSpace({ name: 'X', presetDirName: 'test-preset' })
       // 篡改 presetDirName 使缓存未命中
       const badMeta = { ...meta, presetDirName: 'unknown' }
-      expect(() => manager.getAgent(meta.id, badMeta)).toThrow('Preset not found: unknown')
+      await expect(manager.getAgent(meta.id, badMeta)).rejects.toThrow('Preset not found: unknown')
     })
 
     it('returns the same object on second call (caching)', async () => {
       const fakeAgent = { __fake: true } as never
       const spy = vi
         .spyOn(spaceFactory, 'createSpaceAgent')
-        .mockReturnValue(fakeAgent)
+        .mockResolvedValue(fakeAgent)
 
       const meta = await manager.createSpace({ name: 'X', presetDirName: 'test-preset' })
-      const agent1 = manager.getAgent(meta.id, meta)
-      const agent2 = manager.getAgent(meta.id, meta)
+      const agent1 = await manager.getAgent(meta.id, meta)
+      const agent2 = await manager.getAgent(meta.id, meta)
 
       expect(agent1).toBe(fakeAgent)
       expect(agent1).toBe(agent2)

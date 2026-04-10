@@ -30,18 +30,11 @@ function createTestManager(spacesDir: string): SpaceManager {
   })
 }
 
-/** 等待根 session 创建完成（space-factory 中异步 fire-and-forget） */
+/** 获取根 session ID（createSpaceAgent 现在会 await 根 session 创建） */
 async function waitForRoot(manager: SpaceManager, spaceId: string, meta: Parameters<typeof manager.getAgent>[1]): Promise<string> {
-  const agent = manager.getAgent(spaceId, meta)
-  for (let i = 0; i < 20; i++) {
-    try {
-      const root = await agent.sessions.getRoot()
-      return root.id
-    } catch {
-      await new Promise((r) => setTimeout(r, 50))
-    }
-  }
-  throw new Error('Root session not created in time')
+  const agent = await manager.getAgent(spaceId, meta)
+  const root = await agent.sessions.getRoot()
+  return root.id
 }
 
 describe('Session Detail API', () => {

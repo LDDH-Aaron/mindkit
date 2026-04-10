@@ -97,7 +97,7 @@ async function hydrateSession(
 }
 
 /** 将 preset config 组装为完整 StelloAgentConfig，创建 StelloAgent */
-export function createSpaceAgent(ctx: SpaceFactoryContext): StelloAgent {
+export async function createSpaceAgent(ctx: SpaceFactoryContext): Promise<StelloAgent> {
   // NodeFileSystemAdapter base = Space 根目录（SessionTreeImpl 内部用 sessions/ 前缀）
   const fs = new NodeFileSystemAdapter(ctx.dataDir)
   const sessions = new SessionTreeImpl(fs)
@@ -395,9 +395,11 @@ export function createSpaceAgent(ctx: SpaceFactoryContext): StelloAgent {
   agentRef = agent
 
   // 确保根 session 存在（topology 端点在首次对话前就需要读取）
-  sessions.getRoot().catch(async () => {
+  try {
+    await sessions.getRoot()
+  } catch {
     await (sessions as SessionTreeImpl).createRoot('Main')
-  })
+  }
 
   return agent
 }

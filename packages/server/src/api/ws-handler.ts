@@ -36,7 +36,7 @@ export async function handleWsConnection(
     return
   }
 
-  const agent = spaceManager.getAgent(spaceId, meta)
+  const agent = await spaceManager.getAgent(spaceId, meta)
 
   // 订阅 EventBus，推送系统事件
   const bus = spaceManager.getEventBus(spaceId)

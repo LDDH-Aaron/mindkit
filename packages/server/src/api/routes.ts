@@ -72,7 +72,7 @@ export function buildRoutes(spaceManager: SpaceManager): Hono {
     if (!body.message) return c.json({ error: 'message is required' }, 400)
     if (!body.sessionId) return c.json({ error: 'sessionId is required' }, 400)
 
-    const agent = spaceManager.getAgent(id, meta)
+    const agent = await spaceManager.getAgent(id, meta)
     const toolCallTimers = new Map<string, number>()
     const toolCalls: Array<{
       id: string; name: string; args: Record<string, unknown>
@@ -112,7 +112,7 @@ export function buildRoutes(spaceManager: SpaceManager): Hono {
     const sid = c.req.param('sid')
     const meta = await spaceManager.getSpace(id)
     if (!meta) return c.json({ error: 'Space not found' }, 404)
-    const agent = spaceManager.getAgent(id, meta)
+    const agent = await spaceManager.getAgent(id, meta)
     try {
       const result = await agent.enterSession(sid)
       return c.json(result)
@@ -135,7 +135,7 @@ export function buildRoutes(spaceManager: SpaceManager): Hono {
     const id = c.req.param('id')
     const meta = await spaceManager.getSpace(id)
     if (!meta) return c.json({ error: 'Space not found' }, 404)
-    const agent = spaceManager.getAgent(id, meta)
+    const agent = await spaceManager.getAgent(id, meta)
     try {
       const tree = await agent.sessions.getTree()
       return c.json(tree)
@@ -184,7 +184,7 @@ export function buildRoutes(spaceManager: SpaceManager): Hono {
     const sid = c.req.param('sid')
     const meta = await spaceManager.getSpace(id)
     if (!meta) return c.json({ error: 'Space not found' }, 404)
-    const agent = spaceManager.getAgent(id, meta)
+    const agent = await spaceManager.getAgent(id, meta)
     try {
       const records = await agent.memory.readRecords(sid)
       // 跳过 fork 继承的父 session 记录，只返回子 session 自身的对话
